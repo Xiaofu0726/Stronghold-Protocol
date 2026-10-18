@@ -1,6 +1,6 @@
 # 上游同步与素材更新
 
-作者仓库在本地 `package.json` 中登记为 `sganggs/Stronghold-Protocol`；当前 `origin` 指向用户 fork `LongQianChen/Stronghold-Protocol`。两个来源不能混淆。本文件给出流程，不表示已经联网拉取、推送或更新线上服务器。
+作者仓库在本地 `package.json` 中登记为 `sganggs/Stronghold-Protocol`；当前 `origin` 指向维护 fork `Xiaofu0726/Stronghold-Protocol`。两个来源不能混淆。本文件给出流程，不表示已经联网拉取、推送或更新线上服务器。
 
 ## 1. 先记录真实基线和范围
 
@@ -27,10 +27,10 @@
 | 普通公告与紧急通知 | `server/index.js`、`server/http/routes.js`、`server/announcements.js`、`server/announcementNotices.js`、`public/js/main.js` | D014 普通发布不打断对局，显式 notify 独立队列；D015 仅公告目录 assets 的只读图片，全部 host、广播与关闭清理保留 |
 | 个人选择及战绩 | `match/intents.js`、`match/spDraft.js`、`choiceOverlay.js`、`ui/stats.js` | 个人 choiceId 与公共 draftId/groupId 不串用；二十席位末席本人仍有自己的统计、导入导出和完整回看 |
 | 开局重刷 | `match/setupVote.js`、`match/platform.js`、`ui/setupReroll.js` | D018 全体真人一致同意；重建全部固定组与自选库存，准备失败不部分替换；策略采用 50 秒，机变时长不变 |
-| 素材预缓存及安装 | `server/assetCacheCatalog.js`、`server/http/assetCache.js`、`public/js/assetCache.js`、`public/asset-cache-sw.js`、`public/js/pwa.js` | D016 按哈希补缺、单缓存 SW、对局暂停批量任务；安装按钮不能引入第二套应用缓存；大厅/房间入口保留 |
+| 素材缓存及安装 | `public/js/assetCache.js`、`public/js/assetPack.js`、`public/sw.js` | D041 采用上游缓存与导入；旧目录、补齐和严格准入已退役，后续同步保持上游方案 |
 | 大厅目录及身份恢复 | `server/lobbyDiscovery.js`、`server/lobby.js`、`public/js/ui/lobbyDiscovery.js`、`public/js/net.js`、`ui/resumeMatch.js` | D017 实际空席匹配、仅大厅订阅、断线与恢复后重订阅；恢复选择时普通自动公告延后，新增按钮不遮挡标题 |
 | 紧凑编码与模块缓存 | `shared/wireCodec.js`、`server/http/websocket.js`、`server/http/runtimeCache.js`、`public/js/runtime.js`、渲染加载器 | D021 已发布 v1 布局不重排，新字段放扩展位；公共状态 8 Hz / 125 ms，32 KiB 跨消息压缩字典；D022 重试参数保留固定 rv，改写清单按实际正文冻结哈希；素材精确别名与旧 SHA 缓存兼容 |
-| 玩家打包文档 | `tools/package.mjs`、`test/package-player.test.js` | D037 本分支说明及引用的已跟踪开发 Markdown 随包离线查看；保留素材打包与服主管理 CLI，不加入私有配置或测试源码，代码示例不重写 |
+| 玩家打包文档 | `tools/package.mjs`、`test/package-player.test.js` | D037 本分支说明及引用的已跟踪开发 Markdown 随包离线查看；保留上游素材工具与服主管理 CLI，不加入私有配置或测试源码，代码示例不重写 |
 
 每个有实际取舍的冲突记录「上游改了什么 / 我们需要什么 / 最终怎么结合 / 如何验证」。不能只写「冲突已解决」，也不能未经核对整文件选 ours/theirs。用户决定需要改变时先提出具体选项。
 

@@ -229,26 +229,7 @@ test('CLI shows without writes, persists valid limit and unlimited, rejects inva
   assert.equal(run('show').status, 1, 'show must not misreport the fallback as the running server last-good policy');
 });
 
-test('asset-cache-limit persists Mbps budgets, defaults the client to total, and restores unlimited', (t) => {
-  const { dir, run } = fixture(t);
-  assert.equal(parseAssetCacheRate('8'), 1_000_000);
-  assert.equal(parseAssetCacheRate('0.5'), 62_500);
-  assert.equal(parseAssetCacheRate('unlimited'), null);
-  for (const args of [['asset-cache-limit'], ['asset-cache-limit', '8', '4', 'extra'], ['asset-cache-limit', '-1'],
-    ['asset-cache-limit', '8', '--json']]) {
-    assert.equal(run(...args).status, 2, args.join(' '));
-  }
-  assert.equal(run('asset-cache-limit', '8', '0').status, 1, 'a positive total cannot have a zero client budget');
-  assert.equal(run('asset-cache-limit', '8').status, 0);
-  assert.deepEqual(JSON.parse(run('show', '--json').stdout), {
-    maxAiPerRoom: null, requireAssetCache: false,
-    assetCacheLimits: { totalBps: 1_000_000, clientBps: 1_000_000 },
-  });
-  assert.equal(run('asset-cache-limit', '8', '4').status, 0);
-  assert.deepEqual(readServerSettings(dir).assetCacheLimits, { totalBps: 1_000_000, clientBps: 500_000 });
-  assert.equal(run('asset-cache-limit', 'unlimited', 'unlimited').status, 0);
-  assert.deepEqual(readServerSettings(dir).assetCacheLimits, { totalBps: null, clientBps: null });
-});
+
 
 test('CLI and server share environment-selected storage and persisted values win over the initial limit', (t) => {
   const { dir } = fixture(t);
@@ -264,22 +245,7 @@ test('CLI and server share environment-selected storage and persisted values win
   controller.close();
 });
 
-test('owner CLI toggles strict admission without erasing the AI ceiling and validates before writing', (t) => {
-  const { dir, run } = fixture(t);
-  for (const args of [['asset-cache'], ['asset-cache', 'yes'], ['asset-cache', 'true'], ['asset-cache', 'required', '--json']]) {
-    assert.equal(run(...args).status, 2);
-  }
-  assert.equal(fs.existsSync(dir), false);
-  assert.equal(run('ai-limit', '3').status, 0);
-  const enabled = run('asset-cache', 'required');
-  assert.equal(enabled.status, 0, enabled.stderr);
-  assert.match(enabled.stdout, /严格，要求完整预缓存/);
-  assert.deepEqual(JSON.parse(run('show', '--json').stdout), { maxAiPerRoom: 3, requireAssetCache: true, assetCacheLimits: null });
-  assert.equal(run('ai-limit', '0').status, 0);
-  assert.deepEqual(JSON.parse(run('show', '--json').stdout), { maxAiPerRoom: 0, requireAssetCache: true, assetCacheLimits: null });
-  assert.equal(run('asset-cache', 'optional').status, 0);
-  assert.deepEqual(JSON.parse(run('show', '--json').stdout), { maxAiPerRoom: 0, requireAssetCache: false, assetCacheLimits: null });
-});
+
 
 test('owner CLI toggles bandwidth emergency detection and the running controller follows it', async (t) => {
   const { dir, run } = fixture(t);

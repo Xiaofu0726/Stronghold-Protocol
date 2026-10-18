@@ -9,14 +9,10 @@ import { parseAiLimit, parseAssetCacheRequirement, parseAssetCacheRate, initialS
 
 const USAGE = `服务器配置（UTF-8）：
   node tools/server-settings.mjs ai-limit <整数|unlimited> [--dir <目录>]
-  node tools/server-settings.mjs asset-cache <required|optional> [--dir <目录>]
-  node tools/server-settings.mjs asset-cache-limit <总Mbps|unlimited> [单IPMbps|unlimited] [--dir <目录>]
   node tools/server-settings.mjs bandwidth-emergency <on|off> [--dir <目录>]
   node tools/server-settings.mjs show [--json] [--dir <目录>]
   默认目录：runtime；可用 SP_SERVER_SETTINGS_DIR 指定持久化目录。
   设置会持久保存，运行中的服务器约 1 秒内读取；AI 上限在对局结束后应用。
-  asset-cache 默认 optional，required 限制新创建、加入、最快匹配和观战；不踢出现有成员或阻止续玩。
-  asset-cache-limit 默认 unlimited；例如 8 4 表示总 8 Mbps、单 IP 4 Mbps，unlimited unlimited 恢复无限制。
   bandwidth-emergency 默认 off；关闭时完全停止带宽采样、需求/拥堵读取和定时器；运行中的服务器约 1 秒内读取。
   修改一个设置保留另一个；SP_MAX_AI_PER_ROOM / SP_REQUIRE_ASSET_CACHE 仅作无持久配置时的启动默认值。`;
 const writeUtf8 = (stream, value) => stream.write(Buffer.from(`${value}\n`, 'utf8'));
@@ -31,6 +27,7 @@ export function prepareServerSettingsConsole({ platform = process.platform, stdo
 function parseArgs(argv) {
   const [command, ...rest] = argv;
   if (!command || command === '--help' || command === '-h') return { command: 'help' };
+  if (['asset-cache', 'asset-cache-limit'].includes(command)) throw new Error('旧预缓存管理已停用，请使用游戏设置中的上游素材包导入');
   if (!['ai-limit', 'asset-cache', 'asset-cache-limit', 'bandwidth-emergency', 'show'].includes(command)) throw new Error(`未知命令 ${command}`);
   const options = { command, dir: undefined, json: false, value: undefined, clientValue: undefined };
   const seen = new Set();
@@ -95,7 +92,7 @@ export function main(argv) {
       const dir = serverSettingsDirectory({ dir: options.dir });
       const state = readServerSettings(dir) || initialServerSettings();
       writeUtf8(process.stdout, options.json ? JSON.stringify(state, null, 2)
-        : `每房 AI 上限：${state.maxAiPerRoom === null ? '不限' : state.maxAiPerRoom}\n预缓存准入：${state.requireAssetCache ? '严格，要求完整预缓存' : '允许未完整预缓存'}\n素材在线限速：${state.assetCacheLimits ? `${state.assetCacheLimits.totalBps === null ? '不限' : `${state.assetCacheLimits.totalBps / 125000} Mbps`} / ${state.assetCacheLimits.clientBps === null ? '不限' : `${state.assetCacheLimits.clientBps / 125000} Mbps`}（总 / 单 IP）` : '不限（默认）'}\n带宽紧急保护：${state.bandwidthEmergencyEnabled === true ? '开启' : '关闭（默认）'}`);
+        : `每房 AI 上限：${state.maxAiPerRoom === null ? '不限' : state.maxAiPerRoom}\n带宽紧急保护：${state.bandwidthEmergencyEnabled === true ? '开启' : '关闭（默认）'}`);
     }
     return 0;
   } catch (error) { writeUtf8(process.stderr, `服务器配置：${error.message}`); return 1; }

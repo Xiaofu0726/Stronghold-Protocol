@@ -196,6 +196,8 @@ test('Final Assault freezes overtime, silence handover and AI pacer; resumes the
   const m = h.m;
   h.toPrep();
   // Target-state fixture: directly enter the boss round, without simulating all preceding rounds.
+  // Exercise one human-owned field and one server-owned AI field independently of seeded pairing.
+  m.bossPairs = [['p_0', 'p_1'], ['ai_0', 'ai_1']];
   m.startRound(m.gd.bossRound);
   h.runToPhase(PHASE.PREP, m.gd.bossRound);
   assert.ok(h.drive(() => m.phase === PHASE.FINAL_ASSAULT));

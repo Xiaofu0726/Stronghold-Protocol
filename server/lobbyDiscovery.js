@@ -124,8 +124,7 @@ export class LobbyDiscovery {
   snapshot(watcher, view = this.projection(watcher.list)) {
     const { list, page } = watcher;
     const { online, roomCount, matchCount, playingCount, joinableCount } = view;
-    const state = { t: 'lobby.state', online, roomCount, matchCount, playingCount, joinableCount,
-      requireAssetCache: this.lobby.requireAssetCache };
+    const state = { t: 'lobby.state', online, roomCount, matchCount, playingCount, joinableCount };
     if (list) {
       const totalPages = Math.max(1, Math.ceil(view.rooms.length / LOBBY_PAGE_SIZE));
       const currentPage = Math.max(0, Math.min(page, totalPages - 1));
@@ -166,13 +165,11 @@ export class LobbyDiscovery {
   }
 
   /** Capacity preference falls back to fastest; ties are random and the join is synchronous. */
-  quickMatch(session, { capacity, assetCache } = {}) {
+  quickMatch(session, { capacity } = {}) {
     if (this.lobby.emergency?.active) return fail(ERR.SERVER_EMERGENCY);
     if (capacity != null && !ROOM_CAPACITIES.includes(capacity)) return fail(ERR.BAD_MSG, 'invalid capacity');
     const current = this.lobby.roomOf(session);
     if (current?.match) return fail(ERR.ROOM_STARTED, 'leave your running match first');
-    const admission = this.lobby.assetCacheAdmission(assetCache);
-    if (admission) return admission;
     let candidates = [...this.lobby.rooms.values()].filter((room) => room !== current
       && room.allowMatchmaking !== false && room.mode === 'coop' && !room.match && room.freeSeat() >= 0);
     if (capacity != null) {
@@ -184,17 +181,17 @@ export class LobbyDiscovery {
     const fewest = Math.min(...candidates.map(vacancies));
     const best = candidates.filter((room) => vacancies(room) === fewest);
     const room = best[this.chooseIndex(best.length)];
-    return this.lobby.join(session, { code: room.code, assetCache });
+    return this.lobby.join(session, { code: room.code });
   }
 
   /** Resolve a public identity at request time; stale directory views never bypass the latest admission policy. */
-  accessById(session, { roomId, assetCache }, spectate) {
+  accessById(session, { roomId }, spectate) {
     const room = [...this.lobby.rooms.values()].find((candidate) => candidate.directoryId === roomId);
     if (!room) return fail(ERR.ROOM_NOT_FOUND);
     if (!spectate && room.allowMatchmaking === false) return fail(ERR.BAD_TARGET, 'matchmaking disabled');
     // Existing handlers perform room/role/capacity and asset checks before changing any membership.
-    return spectate ? this.lobby.spectate(session, { code: room.code, assetCache })
-      : this.lobby.join(session, { code: room.code, assetCache });
+    return spectate ? this.lobby.spectate(session, { code: room.code })
+      : this.lobby.join(session, { code: room.code });
   }
 
   close() {

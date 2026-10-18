@@ -39,7 +39,7 @@ test('emergency cuts website traffic and new identities while preserving a real 
   assert.equal(server.bandwidthEmergency.trip('test-congestion'), true);
   const notice = await host.waitFor('m.emergency', (msg) => msg.active);
   assert.ok(JSON.stringify(notice).length < 200);
-  assert.equal(notice.retryAt - notice.since, 120000);
+  assert.equal(notice.retryAt - notice.since, 60000);
   await host.waitFor('m.public', (msg) => msg.emergencyFrozen);
   assert.equal(match.emergencyFrozen, true);
   assert.equal((await host.request({ t: 'g.infoReady' })).code, 'SERVER_EMERGENCY');

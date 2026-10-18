@@ -96,7 +96,7 @@ test('statistics count unique connected sessions, omit private data and coalesce
   lobby.addBot(host);
   lobby.discovery.watch(watcher, { on: true });
   const initial = watcher.frames.at(-1);
-  assert.deepEqual(initial, { t: 'lobby.state', online: 2, roomCount: 1, matchCount: 0, playingCount: 0, joinableCount: 1, requireAssetCache: false });
+  assert.deepEqual(initial, { t: 'lobby.state', online: 2, roomCount: 1, matchCount: 0, playingCount: 0, joinableCount: 1 });
   assert.equal(Object.hasOwn(initial, 'rooms'), false, 'closed directory receives counts only');
   lobby.discovery.watch(watcher, { on: true });
   assert.equal(watcher.frames.length, 1, 'same subscription produces no repeated payload');

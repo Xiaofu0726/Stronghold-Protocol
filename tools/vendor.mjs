@@ -33,6 +33,8 @@ export function rewriteBare(src, map) {
 
 /** [source under the repo root, file name in public/vendor, optional] */
 export const VENDOR_FILES = Object.freeze([
+  ['node_modules/ses/dist/ses.umd.js', 'ses.umd.js'],
+  ['node_modules/acorn/dist/acorn.mjs', 'acorn.mjs'],
   ['node_modules/pixi.js/dist/pixi.min.js', 'pixi.min.js'],
   ['node_modules/pixi-spine/dist/pixi-spine.js', 'pixi-spine.js'],
   ['node_modules/preact/dist/preact.module.js', 'preact.module.js'],
@@ -40,8 +42,6 @@ export const VENDOR_FILES = Object.freeze([
   ['node_modules/htm/dist/htm.module.js', 'htm.module.js'],
   ['node_modules/three/build/three.core.js', 'three.core.js', true],
   ['node_modules/three/build/three.module.js', 'three.module.js', true],
-  ['node_modules/@zip.js/zip.js/dist/zip-native.min.js', 'zip-native.min.js'],
-  ['node_modules/@zip.js/zip.js/LICENSE', 'zip-LICENSE.txt'],
 ]);
 
 export function vendor({ log = console.log, warn = console.warn } = {}) {

@@ -62,7 +62,6 @@ test('new lobby routes require an opaque UUID and matchmaking policy requires a 
     for (const roomId of [undefined, '', r.code, null, 3, {}, r.directoryId.toUpperCase(), 'a'.repeat(1000)]) {
       assert.notEqual(validateC2S({ t: type, roomId }), null);
     }
-    assert.notEqual(validateC2S({ t: type, roomId: r.directoryId, assetCache: { ready: true } }), null);
   }
   for (const allowed of [true, false]) assert.equal(validateC2S({ t: 'room.setMatchmaking', allowed }), null);
   for (const allowed of [undefined, 0, 1, 'false', null]) {
@@ -212,29 +211,7 @@ test('directory observation works before and during matches and preserves the tw
   error(access(player('Solo watcher'), soloRoom, true), ERR.ROOM_FULL);
 });
 
-test('new public routes enforce complete asset readiness before membership changes and keep same-role resyncs', (t) => {
-  const { lobby, player, room, access } = harness(t);
-  const target = room(player('Target'));
-  const guest = player('Guest');
-  const original = room(guest);
-  lobby.setAssetCachePolicy({ required: true, getSummary: () => summary });
-  for (const spectate of [false, true]) {
-    for (const invalid of [undefined, { ...report, readyFiles: 0 }, { ...report, readyBytes: 6 }, { ...report, version: 'b'.repeat(64) }]) {
-      error(access(guest, target, spectate, invalid), ERR.ASSET_CACHE_REQUIRED);
-      assert.equal(guest.roomCode, original.code);
-      assert.equal(original.hostId, guest.playerId);
-      assert.equal(target.seatOf(guest.playerId), null);
-      assert.equal(target.spectatorOf(guest.playerId), null);
-    }
-  }
-  assert.deepEqual(access(guest, target, true, report), { ok: true });
-  assert.deepEqual(access(guest, target, true), { ok: true }, 'same-role resync does not need a fresh report');
-  error(access(guest, target), ERR.ASSET_CACHE_REQUIRED, 'spectator-to-player is a new admission');
-  assert.ok(target.spectatorOf(guest.playerId));
-  assert.deepEqual(access(guest, target, false, report), { ok: true });
-  assert.equal(target.spectatorOf(guest.playerId), null);
-  assert.deepEqual(access(guest, target), { ok: true }, 'same player role resync remains possible');
-});
+
 
 test('bandwidth emergency rejects new directory entry while existing role resyncs and invitations retain original semantics', (t) => {
   const { lobby, player, room, access } = harness(t);
@@ -317,26 +294,7 @@ for (const wire of [false, true]) {
   });
 }
 
-test('client Net attaches readiness to both new public routes and neither bypasses server strict admission', async (t) => {
-  const { server, connect, browserNet } = await socketFixture(t);
-  const host = await connect('Host');
-  await host.request({ t: 'room.create', mode: 'coop', difficulty: 'NORMAL', capacity: 8 });
-  const r = server.lobby.getRoom(server.registry.byId(host.welcome.playerId).roomCode);
-  server.lobby.setAssetCachePolicy({ required: true, getSummary: () => summary });
-  const denied = await connect('Denied', true);
-  for (const type of ['lobby.join', 'lobby.spectate']) {
-    assert.equal((await denied.request({ t: type, roomId: r.directoryId })).code, ERR.ASSET_CACHE_REQUIRED);
-    assert.equal(server.registry.byId(denied.welcome.playerId).roomCode, null);
-  }
-  const requests = [];
-  const net = await browserNet((type) => { requests.push(type); return report; });
-  for (const type of ['lobby.join', 'lobby.spectate']) {
-    assert.equal((await net.request(type, { roomId: r.directoryId })).t, 'ok');
-    assert.equal(server.registry.byId(net.playerId).roomCode, r.code);
-    await net.request('room.leave');
-  }
-  assert.deepEqual(requests, ['lobby.join', 'lobby.spectate']);
-});
+
 
 test('public observation uses the same heavy-request quota as invitation observation', async (t) => {
   const { server, connect } = await socketFixture(t, { heavyPerSec: 0, heavyBurst: 2 });

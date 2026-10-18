@@ -26,7 +26,6 @@ async function fixture(t, opts = {}) {
   const clients = [];
   t.after(async () => { await Promise.all(clients.map((c) => c.terminate().catch(() => {}))); await srv.close(); });
   srv.lobby.setAiLimit(null);
-  srv.lobby.setAssetCachePolicy({ required: false, getSummary: () => null });
   let now = Date.now();
   srv.lobby.now = () => now;
   const connect = async (name, wire = false, token = undefined) => {

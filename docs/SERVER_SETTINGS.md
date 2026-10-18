@@ -25,23 +25,6 @@ node tools/server-settings.mjs ai-limit unlimited
 - 配置保存到 `runtime/server-settings.json`，服务器重启后仍有效。没有配置时默认不限，分发包不包含本机配置。
 - CLI 显示的是文件/环境配置，不代表另一个目录下的服务器已读到它；多实例部署必须使用对应实例的配置目录。
 
-## 在线补齐带宽预算
-
-在线素材补齐、冷浏览器获取完整目录和手动更新目录共用一个下载预算。默认总预算与单 IP 预算均为不限，普通游戏 HTTP、WebSocket 和已在进行的对局不排队。服主可以在服务器安装目录动态调整：
-
-```bash
-# 总 8 Mbps、单 IP 4 Mbps
-node tools/server-settings.mjs asset-cache-limit 8 4
-
-# 恢复默认无限制
-node tools/server-settings.mjs asset-cache-limit unlimited unlimited
-
-# 查看
-node tools/server-settings.mjs show
-```
-
-参数单位是 Mbps，配置会写入 `runtime/server-settings.json`，运行中的服务器约 1 秒内读取。总预算设为 `0` 会关闭在线目录和素材补齐，但不影响本地 ZIP / JSON 导入。启动环境变量 `SP_ASSET_CACHE_TOTAL_BPS` 与 `SP_ASSET_CACHE_CLIENT_BPS` 仍使用字节/秒，仅在没有持久配置时作为默认值。
-
 ## 配置目录与启动默认值
 
 服务器与 CLI 都可通过 `SP_SERVER_SETTINGS_DIR` 指定目录。相对路径以安装目录为基准，CLI 的 `--dir` 优先于环境变量：
@@ -51,34 +34,15 @@ node tools/server-settings.mjs ai-limit 5 --dir runtime/server-a
 node tools/server-settings.mjs show --json --dir runtime/server-a
 ```
 
-启动服务器时也应设置 `SP_SERVER_SETTINGS_DIR=runtime/server-a`。可以使用 `SP_MAX_AI_PER_ROOM=5` 指定**启动默认值**，有效持久配置优先于此变量；`unlimited` 表示不限。`SP_REQUIRE_ASSET_CACHE=1`（或 `required`）指定严格预缓存启动默认值，`0`（或 `optional`）允许未完整预缓存。环境变量的修改需要重启，而上述 CLI 命令会动态生效。
+启动服务器时也应设置 `SP_SERVER_SETTINGS_DIR=runtime/server-a`。可以使用 `SP_MAX_AI_PER_ROOM=5` 指定**启动默认值**，有效持久配置优先于此变量；`unlimited` 表示不限。`历史缓存相关环境设置已停用。
 
 请备份私有配置目录，不将其放在 `public` 或提交 Git。首次启动遇到损坏的配置文件会报错；运行中损坏文件会记录警告并继续使用最近有效值。删除配置文件会恢复本次启动时的环境默认值，未设置时恢复 AI 不限、预缓存允许。
 
 配置仍为 version 1；旧文件仅含 `maxAiPerRoom` 时，预缓存要求按 `false` 读取。CLI 修改一个字段保留另一个；同一目录的命令应依次执行，原子替换仍以最后写入为准。损坏文件拒绝部分字段修改，避免更新 AI 上限时误清除严格模式；可备份后修复 JSON，明确保留两个设置。
 
-## 完整预缓存准入
+## 素材缓存管理
 
-**默认允许未完整预缓存，服主手动开启严格模式。** 在对应服务器安装目录执行：
-
-```bash
-# 开启：新创建、加入、最快匹配和观战都需要当前素材完整缓存
-node tools/server-settings.mjs asset-cache required
-
-# 关闭限制，恢复默认允许
-node tools/server-settings.mjs asset-cache optional
-
-# 核对本机持久配置（包括 AI 上限与预缓存要求）
-node tools/server-settings.mjs show --json
-```
-
-运行中的服务器约 1 秒内读取。大厅收到新政策；客户端在四种操作前重新核对小摘要、扫描本地实际缓存条目并上报版本、已缓存文件数和字节数。服务器要求这些值与自身当前完整素材摘要一致；只导入目录、素材缺项、旧版本和无报告都返回 `ASSET_CACHE_REQUIRED`。服务器素材有缺项或摘要仍在准备时也拒绝新进入；不会把已拒绝的操作稍后自动执行。
-
-已在房间或对局中的成员保留，当前房间可继续准备与开局；已有玩家和观战者断线后凭原令牌恢复，无需重新满足准入。主动离开后再次进入、换房或从观战转为玩家仍受新准入限制。策略不改变断线续玩期限。
-
-严格模式需要玩家使用支持完整预缓存的 HTTPS / localhost 浏览器。完整 ZIP 或当前目录 JSON 仍推荐由外部渠道分发；没有目录的玩家也可在面板中明确获取完整目录后在线补齐。目录和素材请求共用服主设置的限速与紧急保护；初始化、检查和准入不会自动拉取完整目录。已有完整包包含目录，无需重做大包。使用、导出和更新步骤见 [素材预缓存](ASSET_CACHE.md)。
-
-数量报告用于正常客户端的带宽准入管理：导入时校验素材 SHA-256，进入前重查缓存键；服务器不能凭报告独立证明远端磁盘内容，修改客户端仍能伪造报告。规则与测试见 [D024](development/DECISIONS.md#d024) 和 [DEV-20261010-12](development/records/2026-10-10-12-offline-catalog-admission.md)。
+采用上游素材包导入与缓存，见 [当前说明](ASSET_CACHE.md)。旧严格准入、在线补齐及其限速已停用；历史配置可读取但不再参与入场。asset-cache、asset-cache-limit 命令会明确报停用。
 
 ## 房间目录与转让
 

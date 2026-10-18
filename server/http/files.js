@@ -117,9 +117,13 @@ export class CompressCache {
     /** @type {Map<string, Promise<Buffer>>} */ this.inflight = new Map();
   }
 
-  /** @returns {Promise<Buffer>} encoded file identified by (encoding, path, size, mtime) */
+  /**
+   * @returns {Promise<Buffer>} the file identified by (path, size, mtime, inode, ctime) compressed with `encoding` ('gzip'
+   *   by default) — the inode and ctime too: a file rewritten with its old size and mtime put back (rsync -t, touch -r)
+   *   is another file (a cosmetic plugin's served at its new hash must not come out of the cache with the old bytes)
+   */
   get(absPath, stat, encoding = 'gzip') {
-    return this.compressed(`${absPath}\0${stat.size}\0${stat.mtimeMs}`, () => fsp.readFile(absPath), encoding, path.extname(absPath).toLowerCase());
+    return this.compressed(`${absPath}\0${stat.size}\0${stat.mtimeMs}\0${stat.ino}\0${stat.ctimeMs}`, () => fsp.readFile(absPath), encoding, path.extname(absPath).toLowerCase());
   }
 
   /** id must identify the exact uncompressed bytes (content SHA-256 for runtime files and rendered HTML). */
@@ -265,12 +269,19 @@ function cacheControlFor(ext, mountName, segments, query) {
   return 'no-cache';
 }
 
-/** opts carries an asset content ETag and a policy verified against its URL hash. */
+/**
+ * One file → the response.
+ * @param {{ contentHash?: string | null, cacheControl?: string | null, headers?: Record<string, string> | null }} [opts]
+ *   contentHash: the file's content hash (assetIndex.js) — the ETag then; cacheControl: overrides the policy of its
+ *   path (a content-hashed URL); headers: extra response headers (a ui plugin's Content-Security-Policy), on 200,
+ *   206 and 304 (they share this header object). 416 is an empty body and does not carry them.
+ */
 export async function serveFile(req, res, absPath, stat, mountName, segments, query, gzipCache, log, opts = {}) {
   const ext = path.extname(absPath).toLowerCase();
   const type = MIME[ext] || 'application/octet-stream';
   const compressible = COMPRESSIBLE.has(ext);
-  const rangeHeader = req.headers.range;
+  // RFC 9110 §14.2: Range is defined only for GET; other methods ignore it, including for encoding selection.
+  const rangeHeader = req.method === 'GET' ? req.headers.range : undefined;
   const encoding = compressible && stat.size >= GZIP_MIN_BYTES && !rangeHeader ? preferredEncoding(req.headers['accept-encoding']) : null;
   const baseTag = opts.contentHash || `${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}`;
   const etag = `"${baseTag}${encoding === 'br' ? '-br' : encoding ? '-gz' : ''}"`;
@@ -285,6 +296,7 @@ export async function serveFile(req, res, absPath, stat, mountName, segments, qu
   };
   if (compressible) headers.Vary = 'Accept-Encoding';
   if (encoding) headers['Content-Encoding'] = encoding;
+  if (opts.headers) for (const [k, v] of Object.entries(opts.headers)) if (v != null && v !== '') headers[k] = v;
 
   if (isNotModified(req, etag, stat.mtime)) {
     res.writeHead(304, headers);
@@ -330,8 +342,11 @@ export async function serveFile(req, res, absPath, stat, mountName, segments, qu
 }
 
 /** Serve exact, verified runtime bytes / generated HTML with variant validators and the same range semantics. */
-export async function serveBuffer(req, res, body, { type, tag, cacheControl = 'no-cache', mtime = null, cache, minBytes = GZIP_MIN_BYTES }) {
-  const encoding = body.length >= minBytes && !req.headers.range ? preferredEncoding(req.headers['accept-encoding']) : null;
+export async function serveBuffer(req, res, body, options = null) {
+  if (!Buffer.isBuffer(body)) return serveContentBuffer(req, res, body);
+  const { type, tag, cacheControl = 'no-cache', mtime = null, cache, minBytes = GZIP_MIN_BYTES } = options;
+  const rangeHeader = req.method === 'GET' ? req.headers.range : undefined;
+  const encoding = body.length >= minBytes && !rangeHeader ? preferredEncoding(req.headers['accept-encoding']) : null;
   const etag = `"${tag}${encoding === 'br' ? '-br' : encoding ? '-gz' : ''}"`;
   const headers = { 'Content-Type': type, 'Cache-Control': cacheControl, ETag: etag, Vary: 'Accept-Encoding' };
   if (mtime) headers['Last-Modified'] = mtime.toUTCString();
@@ -342,8 +357,8 @@ export async function serveBuffer(req, res, body, { type, tag, cacheControl = 'n
   if (encoding) output = await cache.getBuffer(tag, body, encoding, type.startsWith('text/') || type.includes('json') ? '.txt' : '');
   else {
     headers['Accept-Ranges'] = 'bytes';
-    if (req.headers.range && ifRangeMatches(req, etag, headers['Last-Modified'])) {
-      const range = parseRange(req.headers.range, body.length);
+    if (rangeHeader && ifRangeMatches(req, etag, headers['Last-Modified'])) {
+      const range = parseRange(rangeHeader, body.length);
       if (range === 'unsatisfiable') {
         res.writeHead(416, { 'Content-Range': `bytes */${body.length}`, 'Content-Length': 0 }); res.end(); return;
       }
@@ -356,6 +371,26 @@ export async function serveBuffer(req, res, body, { type, tag, cacheControl = 'n
   if (res.destroyed) return;
   headers['Content-Length'] = output.length;
   res.writeHead(status, headers); res.end(req.method === 'HEAD' ? undefined : output);
+}
+
+async function serveContentBuffer(req, res, { body, hash, type, cacheControl, key, cache }) {
+  const encoding = body.length >= GZIP_MIN_BYTES ? pickEncoding(req.headers['accept-encoding']) : null;
+  const etag = `"${hash}${encoding === 'br' ? '-br' : encoding === 'gzip' ? '-gz' : ''}"`;
+  const headers = { 'Content-Type': type, 'Cache-Control': cacheControl, ETag: etag, Vary: 'Accept-Encoding' };
+  const inm = req.headers['if-none-match'];
+  if (typeof inm === 'string' && (inm.trim() === '*' || inm.split(',').some((t) => stripWeak(t) === etag))) {
+    res.writeHead(304, headers);
+    res.end();
+    return;
+  }
+  let out = body;
+  if (encoding) {
+    out = await cache.compressed(`${key}\0${hash}`, async () => body, encoding, path.extname(key).toLowerCase());
+    headers['Content-Encoding'] = encoding;
+  }
+  headers['Content-Length'] = out.length;
+  res.writeHead(200, headers);
+  res.end(req.method === 'HEAD' ? undefined : out);
 }
 
 async function streamTo(src, res, log, transform) {

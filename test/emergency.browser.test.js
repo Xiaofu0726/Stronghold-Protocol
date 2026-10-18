@@ -39,8 +39,6 @@ test('Edge 20-seat emergency freezes INFO_CHECK and PREP clocks; notice survives
     await page.waitForFunction(() => !document.querySelector('.title-login > .btn--primary').disabled);
     await page.click('.title-login > .btn--primary');
     await page.waitForSelector('.lobby-screen');
-    // This fixture bypasses local admission scanning only; the real server policy is explicitly optional above.
-    await page.evaluate(() => { globalThis.__SP__.net.getAssetCacheReadiness = () => null; });
     const request = (type, fields = {}) => page.evaluate((type, fields) => globalThis.__SP__.net.request(type, fields), type, fields);
     await request('room.create', { mode: 'coop', difficulty: 'NORMAL', capacity: 20 });
     const { code, hostId } = await page.evaluate(() => globalThis.__SP__.store.get().room);
