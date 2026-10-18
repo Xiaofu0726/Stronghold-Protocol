@@ -6,7 +6,7 @@ import os from 'node:os';
 import { Writable } from 'node:stream';
 import { once } from 'node:events';
 import { createHash } from 'node:crypto';
-import { siteCsp, SIM_WORKER_CSP } from '../../server/http/csp.js';
+import { siteCsp, SIM_WORKER_CSP, runtimeImportMapCsp } from '../../server/http/csp.js';
 import { createRequestHandler } from '../../server/http/routes.js';
 import { createStaticHandler } from '../../server/http/static.js';
 import { installPixiNoEval } from '../../public/js/render/app/pixiNoEval.js';
@@ -69,7 +69,7 @@ test('actual static responses: Worker CSP on 200/206/304 and encoded aliases, in
   for (const csp of [siteCsp(publicDir), null]) {
     const serve = handler(csp);
     const page = await request(serve, '/');
-    assert.equal(page.headers['content-security-policy'], csp || undefined);
+    assert.equal(page.headers['content-security-policy'], csp ? runtimeImportMapCsp(csp, page.body) : undefined);
     const a = await request(serve, '/js/battle/simWorker.js');
     assert.equal(a.status, 200); assert.equal(a.headers['content-security-policy'], SIM_WORKER_CSP);
     for (const headers of [{ range: 'bytes=0-20' }, { 'if-none-match': a.headers.etag }]) {

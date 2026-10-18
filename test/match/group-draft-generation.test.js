@@ -201,5 +201,5 @@ test('a single available supply item remains six separate cards in each independ
 test('no group is silently omitted when card data cannot generate any reward', () => {
   const gd = forcedData('supply', 3);
   gd.shopItemsByTier = {};
-  assert.equal(generateGroupDrafts(gd, createRng(3), 3, GROUPS, OPTIONS), null);
+  assert.deepEqual(generateGroupDrafts(gd, createRng(3), 3, GROUPS, OPTIONS), []);
 });

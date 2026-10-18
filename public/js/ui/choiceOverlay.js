@@ -269,7 +269,7 @@ export function ChoiceView({ pub, sp, myId, solo, personal = false, busyIdx = nu
       </nav>` : null}
       ${readonly && grouped ? html`<p class="spov__readonly" role="status">${t('正在查看{group}组，只有本组成员可以选择', { group: sp.label })}
         ${sp.ownGroupId != null ? html`<button type="button" onClick=${() => onGroup(sp.ownGroupId)}>${t('返回本组')}</button>` : null}</p>` : null}
-      ${order.length ? html`<div class=${cx('spov__order', order.length > 8 && 'spov__order--many')} aria-label=${t('决策顺序')}>
+      ${grouped && order.length ? html`<div class=${cx('spov__order', order.length > 8 && 'spov__order--many')} aria-label=${t('决策顺序')}>
         ${order.map((pid, i) => {
           const p = players.get(pid);
           const picked = sp.pickOf.has(pid);

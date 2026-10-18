@@ -336,6 +336,16 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
         tag: `rv-${version.hash}`, cacheControl: immutable, mtime: version.frozenBody ? null : stat.mtime, cache: gzipCache });
       return;
     }
+    // Upstream content manifests name gameplay data with ?v=<hash8>. Only authorize the exact bytes read here.
+    const dataVersion = mount.name === 'data' ? new URLSearchParams(query).get('v') : null;
+    if (dataVersion && /^[0-9a-f]{8,64}$/.test(dataVersion)) {
+      const body = await fsp.readFile(absPath);
+      const hash = createHash('sha256').update(body).digest('hex');
+      if (hash.startsWith(dataVersion)) {
+        await serveBuffer(req, res, body, { tag: hash, type: MIME['.json'], cacheControl: immutable, cache: gzipCache });
+        return;
+      }
+    }
     // The served manifests: every art URL with its content hash (assetViews.js), once the index is ready
     if (views && (decoded === '/data/assets.json' || decoded === '/data/local-assets.json' || decoded === '/data/local-fx.json')) {
       const view = await views.get(decoded.slice('/data/'.length));

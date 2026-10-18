@@ -1,6 +1,8 @@
+# 卫戍协议：盟约 · Stronghold Protocol: Alliance
+
 ## 卫戍协议20人版总结
 
-本分支项目由龙千尘基于作者上游原作者项目[sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol)，将其扩展为最大20人联机版本，并且做了相应网络优化，新功能添加与体验优化。目前同步至0.2.6版本；公共状态最高8Hz，保留20人压缩默认及固定分组玩法。
+本分支项目由龙千尘基于作者上游原作者项目[sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol)，将其扩展为最大20人联机版本，并且做了相应网络优化，新功能添加与体验优化。目前同步至0.3.1版本；公共状态最高8Hz，保留20人压缩默认及固定分组玩法。
 
 ### 新增设计
 

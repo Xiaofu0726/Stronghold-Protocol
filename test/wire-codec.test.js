@@ -18,13 +18,13 @@ const nameOf = (f) => typeof f === 'string' ? f : f[0];
 // Fields introduced after v1 was published use its existing extension slot. Keep this allowlist
 // explicit: adding a business field must not silently weaken coverage or renumber the fixed catalog.
 const V1_EXTENSIONS = Object.freeze({
-  'room.create': ['assetCache'], 'room.join': ['assetCache'],
-  'lobby.quickMatch': ['assetCache'], 'room.spectate': ['assetCache'],
+  'room.create': ['test'], 'room.join': ['testAck'], 'room.spectate': ['testAck'], 'b.result': ['cs'],
 });
 // Published v1 has no new numeric IDs: these post-v1 business types deliberately use its JSON fallback.
 const V1_JSON_FALLBACK = Object.freeze({
-  c2s: ['room.chat', 'room.setMatchmaking', 'lobby.join', 'lobby.spectate'],
-  s2c: ['m.chat', 'm.chatState', 'm.emergency', 'm.layer'],
+  c2s: ['room.chat', 'room.setMatchmaking', 'lobby.join', 'lobby.spectate', 'room.skins', 'room.setPlugins',
+    'room.setMode', 'room.consent', 'room.contentReady', 'g.unequip', 'g.offer', 'g.offerRefresh', 'g.test', 'b.rehearsalResult'],
+  s2c: ['m.chat', 'm.chatState', 'm.emergency', 'm.layer', 'b.rehearsal', 'b.rehearsalCancel'],
 });
 
 test('v1 complete catalog fingerprint prevents accidental published field or enum renumbering', () => {

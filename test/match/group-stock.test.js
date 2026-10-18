@@ -73,10 +73,11 @@ test('exhausting one equipment group gates only its shop, reward, golden upgrade
     assert.ok(x && y);
     assert.equal(m.itemPoolFor(a).left(PACK), 0);
     assert.equal(m.itemPoolFor(b).left(PACK), 2);
-    assert.equal(a.buy(0).error, 'SOLD_OUT');
-    assert.equal(a.funds, 20);
-    assert.equal(a.pickReward(0).error, 'SOLD_OUT');
-    assert.equal(a.offers.length, 1);
+    assert.ok(a.buy(0).ok);
+    assert.equal(a.funds, 19);
+    assert.ok(a.pickReward(0).ok);
+    assert.equal(a.offers.length, 0);
+    assert.equal(m.itemPoolFor(a).debtOf(PACK), 2);
     assert.equal(a.upgradeItem(x), false);
     assert.equal(a._rollItemSlot(), null);
     assert.equal(b._rollItemSlot().id, PACK);
@@ -87,11 +88,10 @@ test('exhausting one equipment group gates only its shop, reward, golden upgrade
     assert.deepEqual(cb.rollPool('test_group_item'), { kind: 'item', id: PACK });
     assert.ok(b.pickReward(0).ok);
     assert.equal(m.itemPoolFor(b).left(PACK), 1);
-    assert.ok(a.destroy(x.uid).ok);
-    assert.equal(m.itemPoolFor(a).left(PACK), 1);
-    assert.equal(m.itemPoolFor(b).left(PACK), 1);
-    assert.ok(a.pickReward(0).ok);
+    assert.ok(teammate.destroy(y.uid).ok);
     assert.equal(m.itemPoolFor(a).left(PACK), 0);
+    assert.equal(m.itemPoolFor(a).debtOf(PACK), 1);
+    assert.equal(m.itemPoolFor(b).left(PACK), 1);
     checkInvariants(m);
   } finally { m.dispose(); }
 });

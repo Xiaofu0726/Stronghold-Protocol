@@ -88,6 +88,7 @@ export function createRequestHandler({ serveStatic, health, log, announcements, 
   // releases these responses as well, so a cold visitor cannot retain its old streaming budget.
   const publicResponses = new Set();
   function track(res) {
+    if (typeof res.once !== 'function' || typeof res.off !== 'function') return;
     publicResponses.add(res);
     const done = () => { publicResponses.delete(res); res.off('finish', done); res.off('close', done); };
     res.once('finish', done); res.once('close', done);
