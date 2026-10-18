@@ -3,7 +3,7 @@
 ## 基本信息
 
 - 开始 / 最后更新：2026-10-18 / 2026-10-18，Asia/Shanghai。
-- 类型：维护工具、调查；状态：同步工具实现与本地验证完成，远程启用和执行结果以实际 Actions 为准。
+- 类型：维护工具、调查；状态：fork、自动同步工具与远程启用验证完成；首次合并冲突已记录，0.3.1 适配仍待处理。
 - 起始分支：feat/IncreasePlayerCapacity；HEAD：d7d541e73b307500c024c06feef8fcd1f0cd6248。
 - 来源：LongQianChen/Stronghold-Protocol；维护仓库：Xiaofu0726/Stronghold-Protocol。
 - 本次核对的作者 master：4dfcdd779d079bdaec77e2deec853d23934ec758（0.3.1）。
@@ -32,3 +32,11 @@
 首次 0.2.6 → 0.3.1 适配未完成，需按 UPSTREAM.md 与 DECISIONS.md 逐项结合并验证。该事实不影响建立自动检查与冲突报告机制；冲突解决前维护分支继续使用原有 0.2.6 多人玩法。
 
 本任务不自动部署、下载游戏素材或发布发行包。远程 Actions、Issue 与提交以仓库实际记录为准；GitHub schedule 可能延迟或因长期无活动停用。
+
+## 远程执行证据
+
+- 工具提交：2cbfda879b3ac136851a3012d900b3b8ff882d89。
+- 仓库默认分支已设为 feat/IncreasePlayerCapacity，Actions 的 Sync upstream master 状态为 active，Issues 已启用。
+- [首次远程执行](https://github.com/Xiaofu0726/Stronghold-Protocol/actions/runs/39123574666)：completed / success；Linux 上四项同步行为测试通过，真实合并检测到冲突，并正确创建待处理事项。
+- [冲突清单 Issue #1](https://github.com/Xiaofu0726/Stronghold-Protocol/issues/1) 已生成；安装、合并代码 CI/golden 与发布步骤因冲突跳过。工作流成功表示冲突处理机制工作正常，不表示上游已经合并。
+- 当前玩法版本仍为 0.2.6。未部署服务器、未下载素材、未发布发行包。
