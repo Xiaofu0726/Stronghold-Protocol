@@ -1075,3 +1075,8 @@ blocking `battleCheck` window. Failed grants leave the seat unpicked; auto/bot f
 and skips when none grants [ASSUMED]. Native `g.offer`/`g.offerRefresh` use plugin id, local window id, sequence and slot; `m.public.offers` is a
 reconnectable, spectator-readable snapshot. Bots resolve immediately. Sources, bounds and [ASSUMED] defaults are
 [PLUGINS §10b](PLUGINS.md#10b-offers--interaction-windows); test journals carry declarations and intents.
+
+
+## Fork: 20 人房间
+
+本分支的容量、固定卡池组与并行选卡见 [20 人房间扩展](PLAYER_CAPACITY.md)。1–4 人保留上游流程。

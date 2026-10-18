@@ -17,7 +17,7 @@
 // Texts go through t() (docs/I18N.md).
 
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, MAX_SEATS, MAX_SPECTATORS } from '../../../shared/constants.js';
+import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, MAX_SEATS, DEFAULT_SEATS, ROOM_CAPACITIES, MAX_SPECTATORS } from '../../../shared/constants.js';
 import {
   html, Button, Icon, MicroLabel, PingPill, AvatarFrame, DifficultyTag, DifficultyIcon, Tooltip, confirmDialog, doctorNo, Modal,
 } from '../ui/components.js';
@@ -41,8 +41,8 @@ import { t, tc } from '../../../shared/i18n.js';
  * @returns {(null | {seat:number, playerId:any, name:string, isBot:boolean, ready:boolean, connected:boolean})[]}
  */
 export function normalizeSeats(room) {
-  const cap = room?.mode === 'solo' ? 1 : MAX_SEATS;
   const src = Array.isArray(room?.seats) ? room.seats : [];
+  const cap = room?.mode === 'solo' ? 1 : Math.max(1, Math.min(MAX_SEATS, room?.capacity || src.length || DEFAULT_SEATS));
   const out = [];
   for (let i = 0; i < cap; i++) {
     const s = src[i];
@@ -239,6 +239,21 @@ function AiLastToggle({ option, busy, onToggle }) {
 }
 
 /** Room screen component. */
+function CapacityPicker({ room, facts, busy, onPick }) {
+  const capacity = room.capacity || facts.seats.length;
+  const minCapacity = Math.max(1, ...facts.occupied.map((s) => s.seat + 1));
+  return html`<div class="room-capacity" aria-label=${t('同盟席位')}>
+    <span class="room-capacity__label">${t('人数上限')} <b class="num">${capacity}</b> ${t('人')}</span>
+    ${facts.isHost ? html`<div class="room-capacity__options" role="radiogroup" aria-label=${t('调整同盟人数上限')}>
+      ${ROOM_CAPACITIES.map((n) => html`<button key=${n} type="button" role="radio" aria-checked=${capacity === n ? 'true' : 'false'}
+        class=${`room-capacity__opt${capacity === n ? ' is-active' : ''}`} disabled=${!!busy || n < minCapacity}
+        title=${n < minCapacity ? t('先移除超出席位的玩家') : t('{n} 人房间', { n })}
+        onClick=${() => n !== capacity && onPick(n)}>${n}</button>`)}
+    </div>` : html`<span class="t-dim">${t('由房主设置')}</span>`}
+    <span class="room-capacity__count num">${facts.occupied.length} / ${capacity}</span>
+  </div>`;
+}
+
 export function RoomScreen() {
   const room = useStore((s) => s.room);
   const me = useStore((s) => s.me, shallowEqual);
@@ -268,6 +283,7 @@ export function RoomScreen() {
 
   const toggleReady = () => run('ready', () => net.request('room.ready', { ready: !myReady }));
   const start = () => run('start', () => net.request('room.start', {}));
+  const setCapacity = (capacity) => run('capacity', () => net.request('room.setCapacity', { capacity }));
   const addBot = () => run('add', () => net.request('room.addBot', {}));
   const removeBot = (seat) => run(`rm${seat}`, () => net.request('room.removeBot', { seat }));
   // the host removes a human before the match (community report #17): asked first; the player may join again. The
@@ -344,7 +360,8 @@ export function RoomScreen() {
       </div>
     </header>
 
-    <main class=${`seats${coop ? '' : ' seats--solo'}`}>
+    ${coop ? html`<${CapacityPicker} room=${room} facts=${facts} busy=${busy} onPick=${setCapacity} />` : null}
+    <main class=${`seats${coop ? facts.seats.length > 10 ? ' seats--dense' : facts.seats.length > 4 ? ' seats--expanded' : '' : ' seats--solo'}${coop && facts.seats.length === 10 ? ' seats--ten' : ''}`}>
       ${facts.seats.map((s, i) => html`<${SeatCard} key=${s ? `p${s.playerId}` : `e${i}`} seat=${s} index=${i} room=${room} facts=${facts}
         myId=${me.playerId} busy=${busy} onAddBot=${addBot} onRemoveBot=${removeBot} onKick=${kick} />`)}
       ${coop ? null : html`<aside class="solo-brief brackets">

@@ -162,7 +162,7 @@
 //     a player seat (the seat is kept and given back on resume).
 
 import { randomBytes, randomInt } from 'node:crypto';
-import { DIFFICULTIES, ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor } from '../shared/constants.js';
+import { DIFFICULTIES, ERR, DEFAULT_SEATS, ROOM_CAPACITIES, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor } from '../shared/constants.js';
 import { checkLoadout, checkLoadoutOps, cultivationCharIds, checkNotOwned, checkDiyPicks, charPotentialChanges, checkSkinSelection, operatorCharIds } from '../shared/protocol.js';
 import { encode, isDroppable, isErrCode, sendRaw, sendSession } from './net.js';
 import { getData as defaultGetData, lookup } from './data.js';
@@ -265,7 +265,7 @@ function freezeSkins(skins, hasOperator) {
 /** One room: 4 seat slots, host, difficulty, optional running match. */
 export class Room {
   /** @param {string} code @param {'solo'|'coop'} mode @param {string} difficulty @param {number} now */
-  constructor(code, mode, difficulty, now) {
+  constructor(code, mode, difficulty, now, capacity = DEFAULT_SEATS) {
     this.code = code;
     this.mode = mode;
     this.difficulty = difficulty;
@@ -277,7 +277,8 @@ export class Room {
     /** @type {string | null} */
     this.hostId = null;
     /** @type {(Seat | null)[]} */
-    this.seats = new Array(MAX_SEATS).fill(null);
+    this.capacity = mode === 'solo' ? 1 : capacity;
+    this.seats = new Array(this.capacity).fill(null);
     /** @type {{ playerId: string, name: string, connected: boolean }[]} spectator seats, ≤ MAX_SPECTATORS (header) */
     this.spectators = [];
     /** @type {any} running Match instance */
@@ -342,6 +343,7 @@ export class Room {
       hostId: this.hostId,
       mode: this.mode,
       difficulty: this.difficulty,
+      capacity: this.capacity,
       aiPicksLast: this.aiPicksLast,
       inMatch: !!this.match,
       seats: this.seats.map((s) => (s
@@ -639,6 +641,7 @@ export class Lobby {
       case 'room.join': return this.join(session, msg);
       case 'room.leave': return this.leave(session);
       case 'room.ready': return this.ready(session, msg);
+      case 'room.setCapacity': return this.setCapacity(session, msg);
       case 'room.setDifficulty': return this.setDifficulty(session, msg);
       case 'room.setAiPicksLast': return this.setAiPicksLast(session, msg);
       case 'room.addBot': return this.addBot(session);
@@ -725,7 +728,8 @@ export class Lobby {
   // room.* handlers
   // ---------------------------------------------------------------------------------------------------
 
-  create(session, { mode, difficulty, test } = {}) {
+  create(session, { mode, difficulty, capacity = DEFAULT_SEATS, test } = {}) {
+    if (!ROOM_CAPACITIES.includes(capacity)) return fail(ERR.BAD_MSG, 'invalid capacity');
     // A test room exists only when the process switch allowed it. The check runs before the room is built.
     if (test === true && this.testEnabled !== true) return fail(ERR.TEST_DISABLED);
     const cur = this.roomOf(session);
@@ -743,7 +747,7 @@ export class Lobby {
     const code = this.genCode();
     if (!code) return fail(ERR.INTERNAL, 'no room code available');
     if (cur) this.removeMember(cur, session.playerId);
-    const room = new Room(code, mode, difficulty, this.now());
+    const room = new Room(code, mode, difficulty, this.now(), capacity);
     room.test = test === true;
     room.content = this.vanilla;
     // the server owner's default plugins (plugins/config.json `default`; header "Gameplay plugins"): none — the original game
@@ -854,6 +858,22 @@ export class Lobby {
       seat.ready = ready;
       this.broadcastState(room);
     }
+    return OK;
+  }
+
+setCapacity(session, { capacity }) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
+    if (room.match) return fail(ERR.ROOM_STARTED);
+    if (room.mode === 'solo' || !ROOM_CAPACITIES.includes(capacity)) return fail(ERR.BAD_MSG, 'invalid capacity');
+    if (room.seats.some((s, i) => s && i >= capacity)) return fail(ERR.BAD_TARGET, 'occupied seat outside requested capacity');
+    if (room.capacity === capacity) return OK;
+    this.dropReplay(room, session.playerId);
+    if (capacity > room.capacity) room.seats.push(...new Array(capacity - room.capacity).fill(null));
+    else room.seats.length = capacity;
+    room.capacity = capacity;
+    this.broadcastState(room);
     return OK;
   }
 

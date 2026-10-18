@@ -15,7 +15,7 @@
 import { TestMark } from '../ui/testConsole.js';
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR } from '../../../shared/constants.js';
+import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, DEFAULT_SEATS, ROOM_CAPACITIES, MAX_SPECTATORS, modeIdFor, ERR } from '../../../shared/constants.js';
 import { html, confirmDialog, Button, Icon, MicroLabel, Panel, TextField, PingPill, AvatarFrame, Tooltip, Spinner, DifficultyIcon, doctorNo } from '../ui/components.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { GuideButton } from '../ui/guide.js';
@@ -268,6 +268,7 @@ export function LobbyScreen() {
     const d = loadPref('lobby.difficulty', 'FUNNY');
     return DIFFICULTIES.includes(d) ? d : 'FUNNY';
   });
+  const [capacity, setCapacity] = useState(DEFAULT_SEATS);
   const [code, setCode] = useState('');
   const [asTest, setAsTest] = useState(false);
   const testMode = useStore((s) => s.testMode === true);
@@ -296,7 +297,7 @@ export function LobbyScreen() {
     }
   };
   const create = () => run('create', () => net.request('room.create', {
-    mode: roomMode, difficulty, ...(testMode && asTest ? { test: true } : {}),
+    mode: roomMode, difficulty, ...(roomMode === 'coop' ? { capacity } : {}), ...(testMode && asTest ? { test: true } : {}),
   }));
   const join = (c = code) => {
     // `onClick=${join}` hands the click EVENT as the first argument, and a default parameter only applies to
@@ -394,6 +395,13 @@ export function LobbyScreen() {
         <div class="diff-list">
           ${DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
         </div>
+        ${roomMode === 'coop' ? html`<div class="capacity-select">
+          <div class="capacity-select__label">${t('同盟席位')} <${MicroLabel}>ROOM CAPACITY<//></div>
+          <div class="capacity-select__options" role="radiogroup" aria-label=${t('同盟人数上限')}>
+            ${ROOM_CAPACITIES.map((n) => html`<button key=${n} type="button" role="radio" aria-checked=${capacity === n ? 'true' : 'false'}
+              class=${`capacity-select__opt${capacity === n ? ' is-active' : ''}`} onClick=${() => setCapacity(n)}>${t('{n} 人', { n })}</button>`)}
+          </div>
+        </div>` : null}
         <div class="create-box">
           ${testMode ? html`<label class="create-box__test" data-testid="create-test">
             <input type="checkbox" checked=${asTest} onChange=${(e) => setAsTest(e.target.checked)} />

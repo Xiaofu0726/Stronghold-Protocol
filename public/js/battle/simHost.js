@@ -1,6 +1,6 @@
 // C4 simulation hosts (DESIGN §32.11). The clock belongs to runner.js. Only the vanilla host has a Battle on the page.
 import { loadBrowserSim, checkOperatorTraitRuntime } from './simLoader.js';
-import { unitStatsEntry } from '../../../shared/protocol.js';
+import { unitStatsEntry, RESULT_LIMITS } from '../../../shared/protocol.js';
 
 /** [ASSUMED] 2 s per RPC, including construction and forceEnd (both can execute plugin hooks). */
 export const WORKER_TIMEOUT_MS = 2000;
@@ -16,6 +16,7 @@ export class InPageSimHost {
   }
   start(spec, opts = {}) {
     this.spec = spec;
+    this.largeRoom = opts.largeRoom === true;
     this.battle = this.sim.spec.createBattleFromSpec(spec, this.sim.ds, opts);
     this.meter = this.sim.spec.attachLpMeter(this.battle);
     return this;
@@ -38,7 +39,20 @@ export class InPageSimHost {
   uniteLeft() { return this.sim.spec.uniteLeft(this.battle); }
   compactResult(options) {
     const s = this.sim.spec;
-    const r = s.compactResult(this.battle.result());
+    const raw = this.battle.result();
+    // Oversized results must be re-simulated by the server; truncating leaked enemies would undercharge LP.
+    if (this.largeRoom && (Object.keys(raw.perPlayer || {}).length > RESULT_LIMITS.players
+      || Object.values(raw.perPlayer || {}).some(p => (p?.leaked?.length || 0) > RESULT_LIMITS.leaked)
+      || (raw.unspawned?.length || 0) > RESULT_LIMITS.unspawned)) return null;
+    const r = s.compactResult(raw);
+    if (this.largeRoom && !options?.bossLike) {
+      const budget = options?.budget ?? s.RESULT_FRAME_BUDGET ?? 60 * 1024;
+      const size = value => new TextEncoder().encode(JSON.stringify({ t: 'b.result', battleId: options?.battleId || '', result: value, rid: 2147483647 })).length;
+      if (size(r) <= budget) return r;
+      const trimmed = { ...r, perPlayer: {} };
+      for (const [pid, p] of Object.entries(r.perPlayer || {})) trimmed.perPlayer[pid] = { ...p, unitStats: [] };
+      return size(trimmed) <= budget ? trimmed : null;
+    }
     return typeof s.fitResult === 'function' ? s.fitResult(r, options) : r;
   }
   unitStats(id) {
@@ -117,7 +131,7 @@ export class WorkerSimHost {
     this.meter = packet.meter;
     return packet;
   }
-  async start(spec) { this.spec = spec; this.accept(await this.rpc('start', [spec])); return this; }
+  async start(spec, opts = {}) { this.spec = spec; this.accept(await this.rpc('start', opts.largeRoom ? [spec, { largeRoom: true }] : [spec])); return this; }
   async step(n, opts) { return this.accept(await this.rpc('step', [n, opts])); }
   progress() { return this.packet.progress; }
   uniteLeft() { return this.packet.left; }

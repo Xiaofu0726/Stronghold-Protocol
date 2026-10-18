@@ -10,7 +10,8 @@
 //     (`snap` = b.snap frame from battle.snapshot(), `ev` = b.ev frame from battle.drainEvents()) and publishes the
 //     field meta (m.field shape) into store.match.field so the game screen enters the battle,
 //   * when authoritative: reports b.progress (~1 Hz; boss fields 4 Hz with the shared-pool damage and the LP meter)
-//     and b.result (compactResult) at the end; applies b.pool (LocalBossPool.sync) and b.end (forceEnd / takeover),
+//     and b.result (compactResult) at the end, or b.yield for an oversized result; applies b.pool (LocalBossPool.sync)
+//     and b.end (forceEnd / takeover),
 //   * keeps an authoritative battle running while the tab is hidden (a 250 ms interval pump; browsers throttle it to
 //     ~1 Hz, the bounded fast-forward absorbs that); the server deadline + takeover cover anything worse.
 // A frame that fast-forwards (catch-up) passes on only the state-bearing events (keepsState: spawns, deaths, deploys,
@@ -81,10 +82,11 @@
 
 import { net as appNet } from '../net.js';
 import { store as appStore } from '../store.js';
-import { contentFor as appContentFor, simContent as appSimContent, contentSet as appContentSet } from '../content.js';
 import { fxForm } from '../../../shared/protocol.js';
+import { MAX_SEATS } from '../../../shared/constants.js';
 import { spectateEffects } from './observe.js';
 import { recordError, setBattleSource } from '../diag.js';
+import { contentFor as appContentFor, simContent as appSimContent, contentSet as appContentSet } from '../content.js';
 import { loadBrowserSim } from './simLoader.js';
 import { InPageSimHost, WorkerSimHost } from './simHost.js';
 import { trackCombat, combineCombat } from './metrics.js';
@@ -508,8 +510,8 @@ export function createBattleRunner(deps) {
       }
     } else {
       msg.leaks = Math.min(1e6, p.leaks);
-      // 联防: the leakers' enemies still standing (shared/protocol.js b.progress `left`, ≤ 4 players)
-      if (p.left) msg.left = Object.fromEntries(Object.entries(p.left).slice(0, 4));
+      // 联防: the leakers' enemies still standing (shared/protocol.js b.progress `left`, ≤ 20 players)
+      if (p.left) msg.left = Object.fromEntries(Object.entries(p.left).slice(0, MAX_SEATS));
     }
     try { net.send('b.progress', msg); } catch { /* offline */ }
   }
@@ -522,47 +524,51 @@ export function createBattleRunner(deps) {
       progress(e, true);
       e.resultSent = true;
       let result = null;
+      let wire = null;
       try {
         result = e.host.compactResult({ bossLike: bossLike(e), battleId: e.battleId });
+        wire = result;
       } catch (err) { console.warn('[runner] result failed', err); recordError('runner', err, 'result failed'); }
-      if (result) {
-        e.result = result;
+      e.result = wire || result;
+      e.deliveryType = wire || !e.largeRoom ? 'b.result' : 'b.yield';
+      if (e.result) {
         // the view answers with the settlement voice of this battle (screens/game.js → audio.voice result*): the
         // compact result carries the leaks and the kill count the slot is picked from
-        emit('result', { fieldId: e.fieldId, battleId: e.battleId, own: !!e.own, result });
-        deliver(e);
+        emit('result', { fieldId: e.fieldId, battleId: e.battleId, own: !!e.own, result: e.result });
       }
+      deliver(e);
     }
     if (e === cur) publishState();
     else flushLeaks();
   }
 
   /**
-   * Send an entry's b.result (retried once on a timeout). `e.delivery`: 'pending' while a request is out, 'delivered'
+   * Send an entry's b.result or b.yield (retried once on a timeout). `e.delivery`: 'pending' while a request is out, 'delivered'
    * once the server answered (ok, or a refusal — final), 'undelivered' when it never got there (LOST_RESULT_CODES): kept
    * for redeliver() (session back online) and for an authoritative b.start of the finished battle.
    */
   function deliver(e) {
-    if (!net || !e.result || e.delivery === 'pending') return;
+    if (!net || (!e.result && e.deliveryType !== 'b.yield') || e.delivery === 'pending') return;
     e.delivery = 'pending';
     // a room's content set names itself in the result (DESIGN §32.6: the server refuses one without it) — the set the
     // battle was actually simulated on (its simulation's `cs`: loadBrowserSim's), never only what the spec claims; the
     // original content's result is what it always was
     const cs = e.sim && typeof e.sim.cs === 'string' && e.sim.cs ? e.sim.cs : null;
-    const msg = cs ? { battleId: e.battleId, result: e.result, cs } : { battleId: e.battleId, result: e.result };
+    const type = e.deliveryType || 'b.result';
+    const msg = type === 'b.yield' ? { battleId: e.battleId } : { battleId: e.battleId, result: e.result, ...(cs ? { cs } : {}) };
     const send = (tries) => {
       let req;
-      try { req = net.request('b.result', msg, { timeout: 15000 }); } catch (err) { req = Promise.reject(err); }
+      try { req = net.request(type, msg, { timeout: 15000 }); } catch (err) { req = Promise.reject(err); }
       return Promise.resolve(req).then(() => { e.delivery = 'delivered'; }, (err) => {
         const code = err && err.code;
         if (code === 'TIMEOUT' && tries > 0) return send(tries - 1);
         if (LOST_RESULT_CODES.includes(code)) {
           e.delivery = 'undelivered';
-          console.warn(`[runner] b.result not delivered (${code}) — sent again when the session resumes`);
+          console.warn(`[runner] ${type} not delivered (${code}) — sent again when the session resumes`);
         } else {
           e.delivery = 'delivered';
-          console.warn('[runner] b.result refused', code);
-          recordError('runner', code, 'b.result refused');
+          console.warn(`[runner] ${type} refused`, code);
+          recordError('runner', code, `${type} refused`);
         }
         return null;
       });
@@ -789,14 +795,15 @@ export function createBattleRunner(deps) {
       if (!csAccepted(e.spec.cs)) e.authoritative = false;
       let battle;
       try {
+        e.largeRoom = (store?.get?.()?.match?.public?.players?.length || 0) > 4;
         e.host = deps.createHost ? deps.createHost(sim, err => failWorker(e, err)) : sim.remote
           ? new WorkerSimHost({ onFailure: err => failWorker(e, err), timeoutMs: deps.workerTimeoutMs })
           : new InPageSimHost();
         if (e.host.remote) {
           await e.host.load(sim.cs, sim.content);
           if (!wanted()) return;
-          await e.host.start(e.spec);
-        } else { e.host.sim = sim; e.host.start(e.spec, { logger }); }
+          await e.host.start(e.spec, { largeRoom: e.largeRoom });
+        } else { e.host.sim = sim; e.host.start(e.spec, { logger, largeRoom: e.largeRoom }); }
         battle = e.host.battle;
       } catch (err) {
         if (e.host?.remote) failWorker(e, err);
@@ -931,7 +938,6 @@ export function createBattleRunner(deps) {
         || (pub?.phase !== lastPhase && ['LOBBY', 'INFO_CHECK', 'BAND_DRAFT', 'BATTLE_CHECK'].includes(pub?.phase));
       if (resetMetrics) combatHistory.clear();
       lastRound = round;
-      // solo pause (DESIGN §14): the local battle clocks follow m.public.paused
       setPaused(!!(pub && pub.paused));
       const phase = pub ? pub.phase : null;
       if (phase === lastPhase && !resetMetrics) return;

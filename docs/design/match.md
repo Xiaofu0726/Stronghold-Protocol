@@ -222,3 +222,8 @@ other owners do not replenish spent stock. [ASSUMED] Keep valid board cards in r
 index order, remove obsolete/excess cards and temp deadlines, and grant missing copies via normal overflow.
 These do not alter the default rules above. See
 [PLUGINS.md](../PLUGINS.md#rule-switches) for limits and assumptions.
+
+
+## Fork: 20 人房间
+
+扩容分支的规则见 [20 人房间扩展](../PLAYER_CAPACITY.md)，仅大房间启用分组并行选卡；默认房间容量和 AI 选卡选项沿用上游。

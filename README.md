@@ -270,3 +270,6 @@ An **unofficial, non-commercial fan remake** of Arknights' seasonal auto-chess t
 - **Disclaimer:** not affiliated with or endorsed by Hypergryph or Yostar. All Arknights names, art, audio, text and data are © their respective owners and are **not** covered by this project's GPL licence. For study and personal non-commercial use only — no selling, paid distribution, paid servers or monetisation of any kind. Content will be removed on request of the rights holders. Provided "as is", without warranty.
 - **License:** code GPL-3.0-or-later ([LICENSE](LICENSE)); game assets excluded.
 - **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md) (an English summary at its end); the code map is [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+
+本 fork 的 20 人扩展规则与上游边界见 [20 人房间扩展](docs/PLAYER_CAPACITY.md)。

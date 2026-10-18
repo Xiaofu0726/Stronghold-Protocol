@@ -15,6 +15,7 @@ import { getConfig, getMode } from '../data.js';
 import { isShopItem } from '../sim/simdata.js';
 import { mergeData } from '../../shared/plugins/dataUtils.js';
 import { standInRecord } from '../../shared/standIn.js';
+import { MAX_SEATS } from '../../shared/constants.js';
 import { MAX_OFFER_SLOTS } from './player/common.js';
 
 const own = (map, id) => (map && typeof map === 'object' && typeof id === 'string' && Object.hasOwn(map, id) && map[id] && typeof map[id] === 'object' ? map[id] : null);
@@ -63,9 +64,9 @@ export const COMBAT_TIME_SCALE = 2;
  *   solo   `solo` (1: the table value — one player's share);
  *   co-op  `perPlayer` true (the owner's decision of 2026-10-06, adopting PR #209 by @qingjingshenghuo): `coop` (1) × the
  *          players alive when the fight starts — bots and AI 托管 seats count, eliminated and departed seats do not —
- *          at most `aliveFull` (4); a count left out means a full team;
+ *          at most MAX_SEATS (20); a count left out means `aliveFull` (4);
  *          `perPlayer` false: the fixed pool of 0.1.x (「保持固定血量」, restorable with `solo` 0.25): `coop` whatever the
- *          count, × min(alive, aliveFull) / aliveFull with `aliveScaling`.
+ *          count, × alive / aliveFull with `aliveScaling`.
  * @param {object|null|undefined} modeScale config.modes[modeId].bossHpScale
  * @param {object|null|undefined} cfgScale config.bossHpScale
  * @param {boolean} isSolo
@@ -80,7 +81,7 @@ export function bossPoolShareOf(modeScale, cfgScale, isSolo, aliveCount) {
   if (isSolo) return pick('solo', 1);
   const full = Math.max(1, Math.floor(pick('aliveFull', 4)));
   const n = Number(aliveCount);
-  const alive = Number.isFinite(n) && n >= 1 ? Math.min(full, Math.floor(n)) : full;
+  const alive = Number.isFinite(n) && n >= 1 ? Math.min(MAX_SEATS, Math.floor(n)) : full;
   if (flag('perPlayer', true)) return pick('coop', 1) * alive;
   return pick('coop', 1) * (flag('aliveScaling', false) ? alive / full : 1);
 }

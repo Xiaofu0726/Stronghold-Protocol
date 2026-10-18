@@ -45,7 +45,7 @@ export function createSimWorker({ loadSim, prepareScripts = browserScripts } = {
     }
     if (!loaded) throw new Error('simulation not loaded');
     switch (method) {
-      case 'start': host.start(args[0]); return packet();
+      case 'start': host.start(args[0], args[1] || {}); return packet();
       case 'step': {
         if (!Number.isInteger(args[0]) || args[0] < 0 || args[0] > 600) throw new Error('invalid step count');
         return packet(host.step(args[0], args[1] || {}));
