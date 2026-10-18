@@ -1,0 +1,48 @@
+name: Sync upstream master
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: sync-upstream-two-branches
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/20-player-rooms
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Mirror master, then prepare the feature merge
+        id: sync
+        run: node tools/sync-upstream.mjs prepare
+        env:
+          SYNC_GH_TOKEN: ${{ github.token }}
+      - name: Install dependencies for the merged candidate
+        if: steps.sync.outputs.status == 'ready'
+        run: npm ci
+      - name: Check scope, four-player parity, capacity regressions and goldens
+        if: steps.sync.outputs.status == 'ready'
+        run: node tools/sync-upstream.mjs verify
+      - name: Publish only the verified feature head
+        if: steps.sync.outputs.status == 'ready'
+        run: node tools/sync-upstream.mjs publish
+        env:
+          SYNC_GH_TOKEN: ${{ github.token }}
+      - name: Report conflicts or validation failures
+        if: failure()
+        run: node tools/sync-upstream.mjs report
+        env:
+          SYNC_GH_TOKEN: ${{ github.token }}
