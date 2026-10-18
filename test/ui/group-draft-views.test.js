@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeDraft, normalizeSp, normalizePersonalChoice } from '../../public/js/ui/gameLogic.js';
-import { otherBandGroups, teammateBands, draftClock, hasManualTeammateAfter } from '../../public/js/screens/bandDraft.js';
+import { otherBandGroups, teammateBands, draftClock } from '../../public/js/screens/bandDraft.js';
 import { ChoiceView, choicePage, defaultChoiceGroup, cardPickable, armedCard } from '../../public/js/ui/choiceOverlay.js';
 import { draftRequestScope, choiceRequestScope } from '../../public/js/ui/gameActions.js';
 import { validateC2S } from '../../shared/protocol.js';
@@ -66,7 +66,7 @@ test('personal PREP choice retains two-tap confirmation and the prep clock witho
   assert.deepEqual(picked, [1]);
 });
 
-test('strategy availability and skip stay local while other-group picks create group markers', () => {
+test('strategy availability and clocks stay local while other-group picks create group markers', () => {
   const draft = normalizeDraft({ id: 'band:1', groups: [
     { id: 1, order: ['a1', 'a2', 'a3'], turn: 'a2', picks: { a1: 'band_x' }, turnDeadline: 5000, turnSeconds: 30 },
     { id: 2, order: ['b1', 'b2', 'b3'], turn: 'b2', picks: { b1: 'band_y' }, turnDeadline: 8000, turnSeconds: 30 },
@@ -77,8 +77,7 @@ test('strategy availability and skip stay local while other-group picks create g
   assert.deepEqual(otherBandGroups(draft, 'band_y').map((g) => g.label), ['B']);
   assert.deepEqual(otherBandGroups(draft, 'band_x'), []);
   assert.deepEqual(draftClock({ deadline: 8000 }, draft), { deadline: 5000, total: 30 });
-  assert.equal(hasManualTeammateAfter(draft, players, 'a2'), true);
-  assert.equal(hasManualTeammateAfter(draft, players, 'a3'), false, 'manual people in B do not enable an A skip');
+  assert.deepEqual(draft.order, ['a1', 'a2', 'a3'], 'other groups never enter the local turn order');
 });
 
 test('each contingency page retains stage identity and local indexes; only the own page is selectable', () => {

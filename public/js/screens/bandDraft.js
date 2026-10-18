@@ -3,7 +3,7 @@
 // for the mode type (icon, name, LP); a band a teammate already picked carries the picker's avatar and is marked
 // 队友已选 — it cannot be chosen again within that fixed pool group. Other groups' picks only add A–E markers; right =
 // detail pane (icon, 初始生命值, name, effect name + rich description) with 跳过 (co-op, once while another
-// manual player is waiting) and 确认选择.
+// picker is waiting) and 确认选择.
 // Each fixed group has its own countdown; the step header follows the viewer's group. Legacy single-group frames
 // still use m.public.deadline. Every turn has the same clock (Match BAND_TURN_SECONDS), the same number as the
 // current picker's row. The highlighted band (the detail pane's) is what a turn that runs out takes: every change of it
@@ -130,24 +130,12 @@ export function autoPickBand(sel, { bands, taken, myPick = null, defaultId = DEF
  *   selected: the auto pick is the highlighted band (not the default standing in for a band a teammate holds)
  */
 export function draftTip({ timed, turnSeconds = null, autoName = null, selected = true }) {
-  const skip = t('联合模拟有其他手动玩家待选时可跳过一次');
+  const skip = t('联合模拟在选择策略时可以进行一次跳过');
   if (!timed) return t('{skip}；本局不限时', { skip });
   const clock = Number(turnSeconds) > 0 ? t('每位博士有 {n} 秒', { n: Math.round(turnSeconds) }) : t('每位博士限时决策');
   if (!autoName) return t('{skip}；{clock}', { skip, clock });
   return selected ? t('{skip}；{clock}，超时将自动选择当前选中的「{autoName}」', { skip, clock, autoName })
     : t('{skip}；{clock}，超时将自动选择「{autoName}」', { skip, clock, autoName });
-}
-
-/** A skip may only yield to another player who can still choose manually, before any automated seat. */
-export function hasManualTeammateAfter(draft, players, myId) {
-  if (!Array.isArray(draft?.order)) return false;
-  const at = draft.order.indexOf(myId);
-  if (at < 0) return false;
-  const picks = draft.picks instanceof Map ? draft.picks : new Map(Object.entries(draft.picks || {}));
-  return draft.order.slice(at + 1).some((pid) => {
-    const p = players.find((row) => row.playerId === pid);
-    return p && p.alive && p.connected && !p.isBot && !p.autoplay && !picks.has(pid);
-  });
 }
 
 /**
@@ -236,8 +224,9 @@ export function BandDraftScreen() {
   }, [myTurn]);
   // the 本局信息 dialog never outlives the turn it was opened in: a turn change (a pick, a skip, a turn that ran out, an
   // AI pick) or my pick closes it, so whoever's turn begins sees the draft
-  const turnKey = `${draft.id || ''}|${draft.turnPid || ''}|${myPick || ''}`;
+  const turnKey = `${draft.turnPid || ''}|${myPick || ''}`;
   useEffect(() => { setInfoOpen(false); }, [turnKey]);
+  useEffect(() => { setInfoOpen(false); }, [draft.id, draft.groupId]);
   useEffect(() => {
     const selector = grouped ? `.draft-order__group[data-group="${draft.groupId}"] .dorder.is-cur` : '.dorder.is-cur';
     orderRef.current?.querySelector(selector)?.scrollIntoView({ block: 'nearest' });
@@ -366,7 +355,7 @@ export function BandDraftScreen() {
             : !myTurn ? html`<p class="draft-detail__status"><${Icon} name="hourglass" />${turnName ? t('{turnName} 正在决策…', { turnName }) : t('等待轮到你')}</p>` : null}
           <div class="draft-detail__btns">
             ${!solo ? html`<${Button} variant="secondary" size="lg" icon="chevrons" disabled=${!canSkip} loading=${busy === 'skip'} onClick=${skip}
-              title=${skipsLeft <= 0 ? t('跳过次数已用完') : canSkip ? t('让其他手动玩家先选，稍后再选') : t('没有其他待选的手动玩家')}>${t('跳过')}${skipsLeft > 0 ? '' : t('（已用）')}<//>` : null}
+              title=${skipsLeft > 0 ? t('跳过本轮，稍后再选') : t('跳过次数已用完')}>${t('跳过')}${skipsLeft > 0 ? '' : t('（已用）')}<//>` : null}
             <${Button} variant="primary" size="lg" icon="check" disabled=${!myTurn || !band || selTaken} loading=${busy === 'pick'} onClick=${confirm}>${selTaken ? t('队友已选') : t('确认选择')}<//>
           </div>
         </div>
