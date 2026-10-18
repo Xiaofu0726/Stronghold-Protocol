@@ -34,11 +34,11 @@ node tools/server-settings.mjs ai-limit 5 --dir runtime/server-a
 node tools/server-settings.mjs show --json --dir runtime/server-a
 ```
 
-启动服务器时也应设置 `SP_SERVER_SETTINGS_DIR=runtime/server-a`。可以使用 `SP_MAX_AI_PER_ROOM=5` 指定**启动默认值**，有效持久配置优先于此变量；`unlimited` 表示不限。`历史缓存相关环境设置已停用。
+启动服务器时也应设置 `SP_SERVER_SETTINGS_DIR=runtime/server-a`。可以使用 `SP_MAX_AI_PER_ROOM=5` 指定**启动默认值**，有效持久配置优先于此变量；`unlimited` 表示不限。历史缓存相关环境设置已停用。
 
-请备份私有配置目录，不将其放在 `public` 或提交 Git。首次启动遇到损坏的配置文件会报错；运行中损坏文件会记录警告并继续使用最近有效值。删除配置文件会恢复本次启动时的环境默认值，未设置时恢复 AI 不限、预缓存允许。
+请备份私有配置目录，不将其放在 `public` 或提交 Git。首次启动遇到损坏的配置文件会报错；运行中损坏文件会记录警告并继续使用最近有效值。删除配置文件会恢复本次启动时的环境默认值，未设置时恢复 AI 不限。
 
-配置仍为 version 1；旧文件仅含 `maxAiPerRoom` 时，预缓存要求按 `false` 读取。CLI 修改一个字段保留另一个；同一目录的命令应依次执行，原子替换仍以最后写入为准。损坏文件拒绝部分字段修改，避免更新 AI 上限时误清除严格模式；可备份后修复 JSON，明确保留两个设置。
+配置仍为 version 1；历史缓存字段可读取但无运行效果。CLI 修改一个字段保留其他有效设置；同一目录的命令应依次执行，原子替换仍以最后写入为准。损坏文件拒绝部分字段修改；可备份后修复 JSON。
 
 ## 素材缓存管理
 

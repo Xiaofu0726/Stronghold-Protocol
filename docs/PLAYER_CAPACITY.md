@@ -104,11 +104,11 @@ v0.2.4 的装备库存也按固定组共享，见 [D029](development/DECISIONS.m
 
 合并源码后先核对素材清单；有缺项时在仓库根目录运行 `npm run setup`，或优先用 `node tools/fetch-assets.mjs --add-only` 补缺。直连不畅时可选 `node tools/setup.mjs --asset-source=mirror`。已有本机客户端时，可用 `python3 tools/local-extract/extract.py --webp` 提取 WebP 棋盘贴图及本地模型；素材不提交到 Git。
 
-v0.2.6 的必需下载素材清单与 v0.2.4 一致；11 套官方战场场景及玩法说明 WebP 为可选本地素材，缺少时保留原有棋盘与教程回退。在线清单新增内容哈希地址；预缓存目录使用精确别名，旧目录需通过既有明确手动操作更新，已经导入的相同素材按完整 SHA-256 复用。目录版本因别名或素材变化更新，不能继续把旧 `dd40447a61c1` 称为当前目录。既有召唤物模型继续保留，素材与服务器部署状态见 [v0.2.6 合并记录](development/records/2026-10-14-02-upstream-v0.2.6.md)；历史 v0.2.4 核验见 [旧记录](development/records/2026-10-11-06-upstream-v0.2.4.md)。
+0.3.1 素材导入与缓存采用上游方案，操作见 [部署指南](DEPLOY.md) 和 [缓存迁移](ASSET_CACHE.md)。旧多人缓存目录与包不自动转换，可在新界面重新导入已有素材。此前 v0.2.6 的素材清单核验属于历史，见 [当时记录](development/records/2026-10-14-02-upstream-v0.2.6.md)。本次未更新服务器素材或发布新包。
 
 ## 本地验证
 
-当前 v0.2.6 的合并取舍、定向测试、素材及验证边界见 [DEV-20261014-02](development/records/2026-10-14-02-upstream-v0.2.6.md)；此前 v0.2.4 的短流程结果见 [DEV-20261011-06](development/records/2026-10-11-06-upstream-v0.2.4.md)。分别记录实际通过、跳过、失败修正和未执行的完整 golden；不等同于二十真人实战。
+当前 v0.3.1 的合并取舍、实际测试与验证边界见 [DEV-20261018-03](development/records/2026-10-18-03-upstream-v031.md)；历史版本结果保留在对应任务记录中。分别记录通过、失败、跳过及未执行项，不等同于二十真人实战。
 
 分组并行选择的实际验证见 [DEV-20261008-05](development/records/2026-10-08-05-parallel-group-drafts.md)：目标状态机、生成器、协议、客户端和信标检查通过；Edge 覆盖 5/6/9/20 席位及两个真实 WebSocket 会话＋18 AI；二十席位终极完整模拟无规则违规。它们不等同于二十名真人并发压测。旧 v0.2.1 合并的 22 张机变界面检查属于当时状态，当前为每组独立六张页。
 
