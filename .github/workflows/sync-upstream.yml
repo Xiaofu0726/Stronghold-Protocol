@@ -1,0 +1,69 @@
+name: Sync upstream master
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: multiplayer-upstream-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  sync:
+    if: github.repository == 'Xiaofu0726/Stronghold-Protocol'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      SP_E2E: '0'
+      SP_REAL_E2E: '0'
+      RENDER_E2E: '0'
+      SIM_E2E: '0'
+      NO_COLOR: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/IncreasePlayerCapacity
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Verify synchronization behavior
+        run: node --test .github/scripts/upstream-sync.test.js
+      - name: Prepare merge without changing the remote branch
+        id: prepare
+        run: node .github/scripts/upstream-sync.mjs prepare
+      - name: Record conflicts and keep multiplayer branch intact
+        if: steps.prepare.outputs.state == 'conflict'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/upstream-sync.mjs conflict
+      - name: Install merged dependencies
+        if: steps.prepare.outputs.state == 'ready'
+        run: npm ci --no-audit --no-fund
+      - name: Verify merged code
+        if: steps.prepare.outputs.state == 'ready'
+        run: npm run ci
+      - name: Verify golden results
+        if: steps.prepare.outputs.state == 'ready'
+        run: npm run golden
+      - name: Publish only the verified merge
+        if: steps.prepare.outputs.state == 'ready'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/upstream-sync.mjs publish
+      - name: Close resolved sync notice
+        if: steps.prepare.outputs.state == 'current'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/upstream-sync.mjs current
+      - name: Record verification or publishing failure
+        if: failure() && steps.prepare.outcome != 'skipped'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .github/scripts/upstream-sync.mjs failure
