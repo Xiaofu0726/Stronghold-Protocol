@@ -136,12 +136,16 @@ test('one issue per ongoing failure; unchanged failures do not update it; recove
     return { ok: true, status: 200, json: async () => options.method === 'GET' ? (issue?.state === 'open' ? [issue] : []) : issue, route };
   };
   const client = issueClient({ repository: 'example/repo', token: 'fixture-only', request });
-  const state = { stage: 'merge-feature', master: 'abc', originalFeature: 'def', conflicts: ['file.js'], error: 'conflict' };
+  const state = { stage: 'merge-feature', master: 'abc', originalFeature: 'def', conflicts: ['file.js', 'other.js'], error: 'conflict' };
   await client.report(state, 'https://example.invalid/run/1');
   await client.report(state, 'https://example.invalid/run/2');
+  await client.report({ ...state, conflicts: ['other.js', 'file.js', 'file.js'], error: 'different runner path and merge output' }, 'https://example.invalid/run/3');
   assert.deepEqual(mutations, ['create']);
+  assert.ok(issue.body.includes('https://example.invalid/run/1'));
   assert.ok(issue.body.includes(ISSUE_MARKER)); assert.ok(issue.body.includes('file.js'));
   await client.report({ ...state, master: 'new' }, 'https://example.invalid/run/3');
+  await client.report({ ...state, master: 'new', originalFeature: 'updated-feature' }, 'https://example.invalid/run/4');
+  await client.report({ ...state, master: 'new', originalFeature: 'updated-feature', conflicts: ['new-file.js'] }, 'https://example.invalid/run/5');
   await client.close();
-  assert.deepEqual(mutations, ['create', 'update', 'close']);
+  assert.deepEqual(mutations, ['create', 'update', 'update', 'update', 'close']);
 });

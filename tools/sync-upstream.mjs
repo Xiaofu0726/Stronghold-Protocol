@@ -4,6 +4,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
 
 export const FEATURE = 'feat/20-player-rooms';
 export const UPSTREAM = 'https://github.com/sganggs/Stronghold-Protocol.git';
@@ -125,9 +126,15 @@ export function publish(cwd, { allowedPaths } = {}) {
   } catch (error) { state.error = error.message; state.status = 'failed'; saveState(cwd, state); throw error; }
 }
 
+function conflictMarker(state) {
+  if (!state.master || !state.originalFeature || !state.conflicts?.length) return null;
+  const identity = [state.master, state.originalFeature, state.stage, [...new Set(state.conflicts)].sort()];
+  return `<!-- stronghold-sync-conflict:${createHash('sha256').update(JSON.stringify(identity)).digest('hex')} -->`;
+}
+
 export function issueBody(state, repository, runUrl) {
   const files = state.conflicts?.length ? state.conflicts.map(file => `- \`${file}\``).join('\n') : '无文本冲突文件；请检查运行日志中的同步或验证错误。';
-  return `${ISSUE_MARKER}\n自动同步暂未完成，\`feat/20-player-rooms\` 保留上次成功提交。\n\n`
+  return `${ISSUE_MARKER}\n${conflictMarker(state) ? `${conflictMarker(state)}\n` : ''}自动同步暂未完成，\`feat/20-player-rooms\` 保留上次成功提交。\n\n`
     + `- 上游 master：\`${state.master || '未读取'}\`\n- 扩容分支：\`${state.originalFeature || '未读取'}\`\n- 失败阶段：\`${state.stage || 'setup'}\`\n\n`
     + `### 冲突文件\n${files}\n\n### 错误\n\`\`\`text\n${String(state.error || '工作流安装或验证步骤失败，请查看日志。').replaceAll('```', '~~~').slice(0, 6000)}\n\`\`\`\n\n`
     + `请在 \`feat/20-player-rooms\` 合入 \`origin/master\` 并处理冲突，只保留扩容差异。推送后可手动运行 Sync upstream master 工作流；恢复成功会自动关闭本 Issue。\n\n`
@@ -156,6 +163,9 @@ export function issueClient({ repository, token, request = fetch }) {
     find,
     async report(state, runUrl) {
       const existing = await find();
+      // Runner paths, stderr text and run URLs do not change an unresolved merge conflict.
+      const marker = conflictMarker(state);
+      if (marker && existing?.body?.includes(marker)) return existing;
       // Keep the first log URL for the same failure so unchanged hourly runs do not spam issue updates.
       const firstUrl = existing?.body?.match(/首次记录的运行日志\]\(([^)]+)\)/)?.[1] || runUrl;
       const body = issueBody(state, repository, firstUrl);
