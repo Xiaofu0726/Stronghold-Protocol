@@ -48,6 +48,7 @@ import { MAX_UNITE_HELPERS, uniteRoundLimit } from '../../shared/playerCapacity.
  * @returns {null | { helpers: any[], leakers: any[], leaked: object[], notReentered: Map<string, number> }}
  */
 export function planUnite(m, results) {
+  if ((m.order?.length ?? m.alivePlayers?.()?.length ?? 4) <= 4) return upstreamPlanUnite(m, results);
   if (m.isSolo) return null;
   const alive = m.alivePlayers();
   const leakers = [];
@@ -127,6 +128,7 @@ export function helperStats(m, ps, results) {
  * by units > active bond > layers > standing > seat. Fixed groups set only the wave limit, never who fights together.
  */
 export function helperOrder(m, perfects, results) {
+  if ((m.order?.length ?? m.alivePlayers?.()?.length ?? 4) <= 4) return upstreamHelperOrder(m, perfects, results);
   const st = new Map(perfects.map((ps) => [ps.playerId, helperStats(m, ps, results)]));
   const S = (ps) => st.get(ps.playerId);
   const perRound = Math.max(1, Math.min(2, Math.trunc(m.gd.unite.maxHelpers)));
@@ -275,4 +277,53 @@ export function uniteSurvivors(plan, uniteResult) {
     out.set(u.sourcePlayerId, (out.get(u.sourcePlayerId) || 0) + 1);
   }
   return out;
+}
+
+// Preserve the complete upstream path for rosters of at most four.
+function upstreamPlanUnite(m, results) {
+  if (m.isSolo) return null;
+  const alive = m.alivePlayers();
+  const leakers = [];
+  const perfects = [];
+  for (const ps of alive) {
+    const r = results.get(ps.playerId);
+    if (!r) continue;
+    const counted = (r.leaked || []).filter((l) => l && l.counted !== false);
+    if (counted.length > 0) leakers.push(ps);
+    else if (r.perfect !== false) perfects.push(ps);
+  }
+  if (!leakers.length || !perfects.length) return null;
+  const helpers = helperOrder(m, perfects, results);
+  const leaked = [];
+  const notReentered = new Map();
+  for (const ps of leakers) {
+    const r = results.get(ps.playerId);
+    for (const l of r.leaked || []) {
+      if (!l || l.counted === false) continue;
+      if (!m.gd.enemy(l.enemyKey)) { notReentered.set(ps.playerId, (notReentered.get(ps.playerId) || 0) + 1); continue; }
+      // kill bounties keep paying in 联防, and only on the card's own enemy. A split or summoned child
+      // never carries bountyId / bountyCoins (spawnChildren). A leak that still has the card's id but is
+      // some other enemy — a copy that did not go through spawnChildren — does not collect the card either
+      // (GitHub #67, #89-2; owner 2026-10-04: the main body only). A bounty set on the SpawnSpec by content
+      // is copied into mods.bountyCoins by the match and has no card to match.
+      const bountyId = l.mods && l.mods.bountyId;
+      const b = bountyId ? ps.bounties.find((x) => x.id === bountyId) : null;
+      const card = b && b.card;
+      let bounty = card && card.payout !== 'perfect' && Number(card.coin) > 0 && l.enemyKey === card.enemyKey
+        ? { coins: Math.trunc(card.coin), ownerPlayerId: ps.playerId } : null;
+      const extra = !bountyId && l.mods ? Math.trunc(Number(l.mods.bountyCoins) || 0) : 0;
+      if (!bounty && extra > 0) bounty = { coins: extra, ownerPlayerId: ps.playerId };
+      leaked.push({ enemyKey: l.enemyKey, mods: l.mods ? { ...l.mods } : null, lpr: l.lpr ?? 1, sourcePlayerId: ps.playerId, tag: l.tag ?? null, bounty });
+    }
+  }
+  return { helpers, leakers, leaked, notReentered };
+}
+
+// Preserve the complete upstream path for rosters of at most four.
+function upstreamHelperOrder(m, perfects, results) {
+  const st = new Map(perfects.map((ps) => [ps.playerId, helperStats(m, ps, results)]));
+  const S = (ps) => st.get(ps.playerId);
+  const select = perfects.slice().sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active) || S(b).standing - S(a).standing || a.seat - b.seat)
+    .slice(0, m.gd.unite.maxHelpers);
+  return select.sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active) || S(b).layers - S(a).layers || S(b).standing - S(a).standing || a.seat - b.seat);
 }

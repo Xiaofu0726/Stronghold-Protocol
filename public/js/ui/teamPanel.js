@@ -169,12 +169,7 @@ export function TeamPanel({ pub, myId, watching, bubbles, emotes = [], emoteNow 
     noteAsked(p);
     onWatch(p);
   };
-  return html`<aside class=${cx('team', compact && 'team--compact', many && 'team--many', grouped && 'team--grouped')} aria-label=${t('同盟成员')}>
-    <div class="team__list">
-    ${sections.map(({ group, players: members }) => html`<div key=${members[0].playerId}
-      class=${cx('team__section', group && 'team__pool-group')} style=${group ? `--pool-group-color:${group.color}` : undefined}
-      role=${group ? 'group' : undefined} aria-label=${group ? t('{group}组 · 同组共享卡池', { group: group.label }) : undefined}>
-    ${members.map((p) => {
+  const row = (p, group = null) => {
       const self = p.playerId === myId;
       const status = p.alive === false ? 'dead' : p.status;
       const meta = STATUS_META[status] || STATUS_META.acting;
@@ -189,7 +184,7 @@ export function TeamPanel({ pub, myId, watching, bubbles, emotes = [], emoteNow 
       const groupTip = group ? t('{group}组 · 同组共享卡池', { group: group.label }) : null;
       const avatarTitle = [title, inTeam && !self && t('与你在同一战场'), groupTip].filter(Boolean).join(' · ');
       return html`<div key=${p.playerId} class=${cx('team__row', self && 'is-self', inTeam && 'is-team', watched && 'is-watched', p.alive === false && 'is-dead', open && 'is-open')}>
-        <button type="button" class="team__btn" onClick=${() => click(p, self)} onDblClick=${(e) => dblClick(e, p, self)} title=${avatarTitle} aria-label=${avatarTitle} aria-expanded=${observe && !self ? String(open) : undefined}>
+        <button type="button" class="team__btn" onClick=${() => click(p, self)} onDblClick=${(e) => dblClick(e, p, self)} title=${avatarTitle} aria-label=${group || many ? avatarTitle : undefined} aria-expanded=${observe && !self ? String(open) : undefined}>
           <${PlayerAvatar} player=${p} self=${self} />
           ${inTeam ? html`<span class=${cx('team__frame', !frameArt && 'team__frame--plain')} style=${frameArt ? `--frame:url("${frameArt}")` : undefined} aria-hidden="true"></span>` : null}
           <span class="team__seat num">P${(p.seat ?? 0) + 1}</span>
@@ -221,7 +216,16 @@ export function TeamPanel({ pub, myId, watching, bubbles, emotes = [], emoteNow 
         </div>
         ${bubble ? html`<${EmoteBubble} key=${bubble.seq} id=${bubble.id} class="team__bubble" />` : null}
       </div>`;
-    })}
+  };
+  if (!grouped && !many) return html`<aside class=${cx('team', compact && 'team--compact')} aria-label=${t('同盟成员')}>
+    ${players.map(p => row(p))}
+  </aside>`;
+  return html`<aside class=${cx('team', compact && 'team--compact', many && 'team--many', grouped && 'team--grouped')} aria-label=${t('同盟成员')}>
+    <div class="team__list">
+    ${sections.map(({ group, players: members }) => html`<div key=${members[0].playerId}
+      class=${cx('team__section', group && 'team__pool-group')} style=${group ? `--pool-group-color:${group.color}` : undefined}
+      role=${group ? 'group' : undefined} aria-label=${group ? t('{group}组 · 同组共享卡池', { group: group.label }) : undefined}>
+      ${members.map(p => row(p, group))}
     </div>`)}
     </div>
     ${many && activeEmotes.length ? html`<div class="team__emote-feed" role="log" aria-live="polite" aria-label=${t('同盟表情')} ref=${feedRef}>

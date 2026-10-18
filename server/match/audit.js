@@ -494,21 +494,23 @@ export function attachAudit(m, { invariants = true, limit = 200 } = {}) {
       const leakers = alive.filter((p) => counted(p.playerId) > 0).map((p) => p.playerId).sort();
       const perfect = alive.filter((p) => res.has(p.playerId) && res.get(p.playerId).perfect !== false && counted(p.playerId) === 0);
       const helpers = helperOrder(m, perfect, res).map((p) => p.playerId);
-      const perRound = Math.max(1, Math.min(2, gd.unite.maxHelpers));
+      const largeRoom = m.order.length > 4;
+      const perRound = largeRoom ? Math.max(1, Math.min(2, gd.unite.maxHelpers)) : gd.unite.maxHelpers;
       const roundsLimit = uniteRoundLimit(m.poolGroups?.length || 1);
-      if (!Number.isInteger(plan.round) || plan.round < 1 || plan.round > roundsLimit
+      if (largeRoom && (!Number.isInteger(plan.round) || plan.round < 1 || plan.round > roundsLimit
         || !Number.isInteger(plan.roundsMax) || plan.roundsMax < plan.round || plan.roundsMax > roundsLimit)
+      )
         fail(`联防 wave ${plan.round}/${plan.roundsMax} exceeds the fixed-group limit ${roundsLimit}`);
-      const usedIds = [...plan.usedHelpers, ...plan.helpers].map((p) => p.playerId);
+      const usedIds = [...(plan.usedHelpers || []), ...plan.helpers].map((p) => p.playerId);
       if (new Set(usedIds).size !== usedIds.length) fail('联防 reused a helper across waves');
       if (usedIds.length > perRound * roundsLimit) fail('联防 used more helpers than the fixed-group budget');
       if (plan.helpers.length > perRound) fail(`${plan.helpers.length} 联防 helpers in one wave (max ${perRound})`);
       if (plan.helpers.some((p) => !p.alive || p.left)) fail(`联防 helper eliminated / departed: ${plan.helpers.filter((p) => !p.alive || p.left).map((p) => p.playerId)}`);
       if (m.isSolo) fail('联防 in solo');
-      if (plan.round === 1 && JSON.stringify(plan.leakers.map((p) => p.playerId).sort()) !== JSON.stringify(leakers))
+      if ((plan.round == null || plan.round === 1) && JSON.stringify(plan.leakers.map((p) => p.playerId).sort()) !== JSON.stringify(leakers))
         fail(`联防 leakers ${plan.leakers.map((p) => p.playerId)} != ${leakers}`);
       if (plan.leakers.some((p) => counted(p.playerId) === 0)) fail('联防 includes a source that did not leak');
-      if (plan.round === 1 && JSON.stringify(plan.helpers.map((p) => p.playerId)) !== JSON.stringify(helpers.slice(0, perRound)))
+      if ((plan.round == null || plan.round === 1) && JSON.stringify(plan.helpers.map((p) => p.playerId)) !== JSON.stringify(helpers.slice(0, perRound)))
         fail(`联防 helpers ${plan.helpers.map((p) => p.playerId)} != ${helpers.slice(0, perRound)}`);
       if (plan.helpers.some((p) => !perfect.includes(p))) fail('联防 selected a leaker or a non-perfect helper');
     });

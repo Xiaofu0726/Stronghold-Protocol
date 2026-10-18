@@ -1,3 +1,5 @@
+import { CapacityMatchSettle } from './match/capacitySettle.js';
+import { CapacityMatchUnite } from './match/capacityUnite.js';
 import { CapacityMatchPlatform } from './match/capacityPlatform.js';
 import { CapacityMatchViews } from './match/capacityViews.js';
 import { CapacityMatchPhases } from './match/capacityPhases.js';
@@ -537,7 +539,7 @@ for (const part of [MatchPlatform, MatchInfra, MatchMessaging, MatchViews, Match
 }
 
 // Small rooms run the upstream methods. Only larger rosters use the capacity overrides.
-for (const part of [CapacityMatchPlatform, CapacityMatchViews, CapacityMatchPhases, CapacityMatchSpDraft, CapacityMatchTestCommands]) {
+for (const part of [CapacityMatchPlatform, CapacityMatchViews, CapacityMatchPhases, CapacityMatchSpDraft, CapacityMatchTestCommands, CapacityMatchSettle, CapacityMatchUnite]) {
   for (const key of Reflect.ownKeys(part.prototype)) {
     if (key === 'constructor') continue;
     const capacityMethod = part.prototype[key];

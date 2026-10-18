@@ -227,3 +227,5 @@ These do not alter the default rules above. See
 ## Fork: 20 人房间
 
 扩容分支的规则见 [20 人房间扩展](../PLAYER_CAPACITY.md)，仅大房间启用分组并行选卡；默认房间容量和 AI 选卡选项沿用上游。
+
+开局不超过 4 人时，联防与结算同样使用上游原方法，保留上游结算钩子的字段以及可配置的援助人数上限。

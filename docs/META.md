@@ -1080,3 +1080,6 @@ reconnectable, spectator-readable snapshot. Bots resolve immediately. Sources, b
 ## Fork: 20 人房间
 
 本分支的容量、固定卡池组与并行选卡见 [20 人房间扩展](PLAYER_CAPACITY.md)。1–4 人保留上游流程。
+
+四人对局的联防计划、结算事件形状也保持上游；`uniteResults` 只在大房间结算中出现。
+可用 `tools/check-four-player-parity.mjs --upstream <upstream-checkout>` 对照消息、事件、随机流和库存。
