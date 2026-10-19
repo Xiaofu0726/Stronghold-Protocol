@@ -39,8 +39,30 @@
 保持上游方案。没有引入多人参考分支的额外聊天、公告、房间发现、房主转移、服务器设置或缓存服务。
 
 后续同步使用每小时自动镜像和受验证保护的 Git 合并，见 [两分支上游同步](UPSTREAM_SYNC.md)。扩容适配集中在
-`shared/playerCapacity.js`、`server/match/match/capacity*.js` 及相关卡池、联防和界面代码。
+`shared/playerCapacity.js`、`server/match/match/capacity*.js`、`server/match/capacity/`、
+`public/js/ui/capacity/` 和 `public/css/player-capacity.css`。
 新增并发选卡方法只在开局人数超过 4 人时启用；原有小房间方法保留，便于逐次对照上游。
+
+### 扩展代码的放置与合并边界
+
+优先新增独立模块，在上游文件中保留必要的导入、调用和容量参数。当前划分如下：
+
+| 扩展 | 独立文件 | 上游接入点 |
+| --- | --- | --- |
+| 席位上拉菜单 | `public/js/ui/capacity/roomCapacity.js` | `screens/lobby.js` 管理容量状态并传给 `room.create` |
+| 分组机变页面 | `public/js/ui/capacity/choiceOverlay.js` | `ui/choiceOverlay.js` 保留上游小房间组件；把现有卡牌工具传给扩容组件 |
+| 扩容布局与关闭按钮修正 | `public/css/player-capacity.css` | `public/index.html` 增加一个样式引用；六个原页面样式文件与 master 一致 |
+| 大房间方法分派 | `server/match/capacity/install.js` | `Match.js` 在上游方法安装完毕后调用一次 |
+| 固定卡池分组 | `server/match/capacity/pools.js` | `Match.js` 与 `match/setupVote.js` 创建或重建卡池 |
+| 连续联防 | `server/match/capacity/unite.js` | `unite.js` 继续共用上游漏怪、悬赏与归因逻辑，仅在大房间扩展计划和援助顺序 |
+| 分组与计时校验 | `server/match/capacity/audit.js` | `audit.js` 调用独立校验器 |
+
+这些是仓库内的普通模块，不需要安装玩法插件。原有协议校验、房间人数、交易选池、领袖人数缩放、
+分组数据转换、战斗报告和页面接线仍需要修改上游文件；不能仅靠新增文件完成扩容。
+
+合入上游时，应先保留其最新实现，再检查上述接入点。独立模块减少同一文件内的文本冲突，
+但上游接口或玩法语义改变时，仍须检查扩展模块是否需要跟进，尤其是分组机变页面的渲染。
+不要通过整段复制上游模块、屏蔽冲突或修改镜像 master 来避免合并检查。
 
 ## 验证
 

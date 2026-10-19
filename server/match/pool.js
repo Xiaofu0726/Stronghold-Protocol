@@ -21,21 +21,7 @@
 // the promotion reward and random grants pass diyStockEntries (the roll's own tier, DESIGN §30.23). Weighted by its
 // copies like any chess, drawn by that player only.
 
-import { poolGroupSizes, poolCopyScale } from '../../shared/playerCapacity.js';
-
-/** Groups are assigned by occupied seat order at match start and never reshuffled after eliminations. */
-export function createPoolGroups(gd, players, opts = {}) {
-  const sorted = players.slice().sort((a, b) => a.seat - b.seat);
-  let offset = 0;
-  return poolGroupSizes(sorted.length).map((size, i) => {
-    const members = sorted.slice(offset, offset + size);
-    const playerIds = members.map((p) => p.playerId);
-    offset += size;
-    const scale = poolCopyScale(size);
-    return { id: i + 1, playerIds, scale, pool: new SharedPool(gd, { ...opts, scale }),
-      itemPool: new SharedItemPool(gd, () => members, { scale }) };
-  });
-}
+import { poolCopyScale } from '../../shared/playerCapacity.js';
 
 /**
  * Per-match disabled bond set D and banned chess (research 01 A2): D = uniform sample of `core` core bonds and `addon`

@@ -5,7 +5,8 @@
 import { PHASE, ERR } from '../../../shared/constants.js';
 import { createRng, deriveSeed } from '../../sim/rng.js';
 import { setupMatchWaves } from '../waves.js';
-import { drawDisabledBonds, createPoolGroups } from '../pool.js';
+import { drawDisabledBonds } from '../pool.js';
+import { createPoolGroups } from '../capacity/pools.js';
 import { OK, fail } from './common.js';
 
 export class MatchSetupVote {

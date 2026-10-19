@@ -2,7 +2,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeDraft, normalizeSp, poolGroups, playerPoolGroup, poolGroupIdentity, poolGroupSections } from '../../public/js/ui/gameLogic.js';
-import { createPoolGroups } from '../../server/match/pool.js';
+import { createPoolGroups } from '../../server/match/capacity/pools.js';
 
 const players = Array.from({ length: 9 }, (_, seat) => ({ playerId: `p${seat}`, seat, alive: true }));
 const fixedGroups = createPoolGroups({ visibleChess: [] }, players)

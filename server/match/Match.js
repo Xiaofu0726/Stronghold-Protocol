@@ -1,10 +1,3 @@
-import { CapacityMatchSettle } from './match/capacitySettle.js';
-import { CapacityMatchUnite } from './match/capacityUnite.js';
-import { CapacityMatchPlatform } from './match/capacityPlatform.js';
-import { CapacityMatchViews } from './match/capacityViews.js';
-import { CapacityMatchPhases } from './match/capacityPhases.js';
-import { CapacityMatchSpDraft } from './match/capacitySpDraft.js';
-import { CapacityMatchTestCommands } from './match/capacityTestCommands.js';
 // server/match/Match.js — the match & meta engine: state machine, timers, round loop, co-op orchestration,
 // broadcasting views (DESIGN §6, §8). Rules are documented in the module headers of ./PlayerState.js, ./pool.js,
 // ./board.js, ./bondsMeta.js, ./effectsMeta.js, ./choices.js, ./waves.js, ./unite.js, ./finalAssault.js,
@@ -213,11 +206,13 @@ import { CapacityMatchTestCommands } from './match/capacityTestCommands.js';
 import { PHASE, modeIdFor } from '../../shared/constants.js';
 import { isContentHash } from '../../shared/plugins/identity.js';
 import { Battle } from '../sim/Battle.js';
+import { installCapacityMatch } from './capacity/install.js';
 import { DataSource } from '../sim/simdata.js';
 import { createRng, deriveSeed } from '../sim/rng.js';
 import { GameData } from './gamedata.js';
 import { RealScheduler } from './scheduler.js';
-import { createPoolGroups, drawDisabledBonds } from './pool.js';
+import { drawDisabledBonds } from './pool.js';
+import { createPoolGroups } from './capacity/pools.js';
 import { PlayerState } from './PlayerState.js';
 import { EffectDispatcher, getDefaultRegistry } from './effectsMeta.js';
 import { setupMatchWaves } from './waves.js';
@@ -538,15 +533,4 @@ for (const part of [MatchPlatform, MatchInfra, MatchMessaging, MatchViews, Match
   }
 }
 
-// Small rooms run the upstream methods. Only larger rosters use the capacity overrides.
-for (const part of [CapacityMatchPlatform, CapacityMatchViews, CapacityMatchPhases, CapacityMatchSpDraft, CapacityMatchTestCommands, CapacityMatchSettle, CapacityMatchUnite]) {
-  for (const key of Reflect.ownKeys(part.prototype)) {
-    if (key === 'constructor') continue;
-    const capacityMethod = part.prototype[key];
-    const upstreamMethod = Match.prototype[key];
-    Object.defineProperty(Match.prototype, key, { configurable: true, writable: true, value: function (...args) {
-      const method = this.order.length > 4 || typeof upstreamMethod !== 'function' ? capacityMethod : upstreamMethod;
-      return method.apply(this, args);
-    } });
-  }
-}
+installCapacityMatch(Match);

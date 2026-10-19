@@ -29,18 +29,16 @@
 // bonds carry the layers their own combat reached (PlayerState.battleInput `reached`: the round's pending gains, capped
 // like settle() — the strip's count; "以其阵地当前的状态" [ASSUMED] includes them; until 0.1.3 the round-start layers),
 // and settle() still adds those gains once. Time limit = the round's combat limit.
-// This fork allows one wave per opening pool group (at most five). Helpers are selected across the whole room,
-// at most two per wave without reuse, and surviving enemies pass to the next unused pair. Settlement keeps every
-// completed wave's rewards and bills only the last survivors.
 // LP: an enemy still alive at the end (leaked in the unite battle, or never spawned before the limit) costs its
 // SOURCE player 1 LP; each player's round loss = min(lpCap, survivors attributed to them + leaks that could not
 // re-enter) — the same 10 cap as a normal round. Only what the escaped wave SENT IN is billable: an enemy that appears
 // while the field runs (a split child, a summon) never crossed the leaker's own goal, so the field tags it `uniteRuntime`
 // at birth (sim/battle/spawns.js) and neither uniteSurvivors nor the HUD's ×N reads it.
 
+import { capacityUnitePlan, capacityHelperOrder } from './capacity/unite.js';
+export { plannedUniteSurvivors, uniteRemainingLeaks, uniteReserveHelpers, nextUnitePlan } from './capacity/unite.js';
 import { buildUniteWave } from './waves.js';
 import { layerGainRoom } from '../../shared/constants.js';
-import { MAX_UNITE_HELPERS, uniteRoundLimit } from '../../shared/playerCapacity.js';
 
 /**
  * @param {import('./Match.js').Match} m
@@ -48,7 +46,6 @@ import { MAX_UNITE_HELPERS, uniteRoundLimit } from '../../shared/playerCapacity.
  * @returns {null | { helpers: any[], leakers: any[], leaked: object[], notReentered: Map<string, number> }}
  */
 export function planUnite(m, results) {
-  if ((m.order?.length ?? m.alivePlayers?.()?.length ?? 4) <= 4) return upstreamPlanUnite(m, results);
   if (m.isSolo) return null;
   const alive = m.alivePlayers();
   const leakers = [];
@@ -61,10 +58,7 @@ export function planUnite(m, results) {
     else if (r.perfect !== false) perfects.push(ps);
   }
   if (!leakers.length || !perfects.length) return null;
-  const ordered = helperOrder(m, perfects, results);
-  const perRound = Math.max(1, Math.min(2, Math.trunc(m.gd.unite.maxHelpers)));
-  const helpers = ordered.slice(0, perRound);
-  const reserveHelpers = ordered.slice(perRound);
+  const helpers = helperOrder(m, perfects, results);
   const leaked = [];
   const notReentered = new Map();
   for (const ps of leakers) {
@@ -87,9 +81,8 @@ export function planUnite(m, results) {
       leaked.push({ enemyKey: l.enemyKey, mods: l.mods ? { ...l.mods } : null, lpr: l.lpr ?? 1, sourcePlayerId: ps.playerId, tag: l.tag ?? null, bounty });
     }
   }
-  return { helpers, reserveHelpers, leakers, leaked, notReentered, round: 1, perRound,
-    roundsMax: Math.min(uniteRoundLimit(m.poolGroups?.length), Math.ceil(ordered.length / perRound)), history: [], usedHelpers: [],
-    skipVotes: new Set(), skipRemaining: false };
+  const plan = { helpers, leakers, leaked, notReentered };
+  return (m.order?.length ?? m.alivePlayers?.()?.length ?? 4) > 4 ? capacityUnitePlan(m, plan) : plan;
 }
 
 /**
@@ -123,107 +116,16 @@ export function helperStats(m, ps, results) {
 }
 
 /**
- * Select distinct perfect players from the whole room for all allowed waves. The first in each pair meets the
- * enemies first (right-hand field): selection by units > active bond > standing units > seat, then the pair ordered
- * by units > active bond > layers > standing > seat. Fixed groups set only the wave limit, never who fights together.
+ * The ≤ maxHelpers helpers, first = the one that meets the enemies first (right-hand field): selection by units >
+ * active bond > standing units > seat, then the pair ordered by units > active bond > layers > standing > seat.
  */
 export function helperOrder(m, perfects, results) {
-  if ((m.order?.length ?? m.alivePlayers?.()?.length ?? 4) <= 4) return upstreamHelperOrder(m, perfects, results);
+  if ((m.order?.length ?? m.alivePlayers?.()?.length ?? 4) > 4) return capacityHelperOrder(m, perfects, results, helperStats);
   const st = new Map(perfects.map((ps) => [ps.playerId, helperStats(m, ps, results)]));
   const S = (ps) => st.get(ps.playerId);
-  const perRound = Math.max(1, Math.min(2, Math.trunc(m.gd.unite.maxHelpers)));
-  const limit = Math.min(MAX_UNITE_HELPERS, perRound * uniteRoundLimit(m.poolGroups?.length));
-  const selected = perfects.slice().sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active) || S(b).standing - S(a).standing || a.seat - b.seat)
-    .slice(0, limit);
-  const ordered = [];
-  for (let i = 0; i < selected.length; i += perRound) {
-    ordered.push(...selected.slice(i, i + perRound).sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active)
-      || S(b).layers - S(a).layers || S(b).standing - S(a).standing || a.seat - b.seat));
-  }
-  return ordered;
-}
-
-/** Count the enemies the next wave would have to face when a wave could not run. */
-export function plannedUniteSurvivors(plan) {
-  const out = new Map(plan.notReentered);
-  for (const l of plan.leaked) out.set(l.sourcePlayerId, (out.get(l.sourcePlayerId) || 0) + 1);
-  return out;
-}
-
-/** Recover still leaking enemies for the next wave, retaining their source, stats and bounty when possible. */
-export function uniteRemainingLeaks(plan, result) {
-  // A twenty-player wave can carry thousands of leaks. Index the original spawns once so matching survivors does not
-  // scan the entire list for every enemy. The same row belongs to its source/key/tag bucket and its exact-mods bucket.
-  const bySource = new Map();
-  const byMods = new Map();
-  const queue = (map, key) => {
-    let q = map.get(key);
-    if (!q) { q = { rows: [], cursor: 0 }; map.set(key, q); }
-    return q;
-  };
-  const take = (q) => {
-    if (!q) return null;
-    // loop-cap: each queued leak row is visited once.
-    while (q.cursor < q.rows.length && q.rows[q.cursor].used) q.cursor++;
-    const row = q.rows[q.cursor++] || null;
-    if (row) row.used = true;
-    return row;
-  };
-  const keyOf = (entry) => JSON.stringify([entry.sourcePlayerId, entry.enemyKey, entry.tag ?? null]);
-  for (const leak of plan.leaked) {
-    const key = keyOf(leak);
-    const row = { leak, used: false };
-    queue(bySource, key).rows.push(row);
-    let variants = byMods.get(key);
-    if (!variants) { variants = new Map(); byMods.set(key, variants); }
-    queue(variants, JSON.stringify(leak.mods)).rows.push(row);
-  }
-  const sources = new Set(plan.leakers.map((p) => p.playerId));
-  const claim = (entry) => {
-    const key = keyOf(entry);
-    const row = (entry.mods == null ? null : take(byMods.get(key)?.get(JSON.stringify(entry.mods))))
-      || take(bySource.get(key));
-    return row?.leak || null;
-  };
-  const out = [];
-  const add = (entry) => {
-    if (!entry || !sources.has(entry.sourcePlayerId) || !entry.enemyKey) return;
-    const prior = claim(entry);
-    out.push({ enemyKey: entry.enemyKey, sourcePlayerId: entry.sourcePlayerId, tag: entry.tag ?? null,
-      mods: entry.mods ?? prior?.mods ?? null, lpr: entry.lpr ?? prior?.lpr ?? 1, bounty: prior?.bounty ?? null });
-  };
-  // Unspawned entries have no mods in BattleResult, so reserve their exact original spawn before matching children.
-  for (const u of result.unspawned || []) add(u);
-  for (const pp of Object.values(result.perPlayer || {})) for (const l of (pp && pp.leaked) || []) {
-    if (l && l.counted !== false) add(l);
-  }
-  return out;
-}
-
-/** Eligible unused helpers, in the original whole-room order, shared by continuation and the skip-vote view. */
-export function uniteReserveHelpers(plan) {
-  if (!plan) return [];
-  const seen = new Set([...plan.usedHelpers, ...plan.helpers].map((ps) => ps.playerId));
-  const reserve = [];
-  for (const ps of plan.reserveHelpers) {
-    if (!ps.alive || ps.left || seen.has(ps.playerId)) continue;
-    seen.add(ps.playerId);
-    reserve.push(ps);
-  }
-  return reserve;
-}
-
-/** Another unused pair is used only while enemies remain, under the opening groups' fixed limit. */
-export function nextUnitePlan(plan, result) {
-  if (!plan || plan.skipRemaining || plan.round >= plan.roundsMax || !result || result.synthetic) return null;
-  const leaked = uniteRemainingLeaks(plan, result);
-  const perRound = Math.max(1, Math.min(2, Math.trunc(plan.perRound ?? plan.helpers.length)));
-  const usedHelpers = [...plan.usedHelpers, ...plan.helpers];
-  const reserve = uniteReserveHelpers(plan);
-  const helpers = reserve.slice(0, perRound);
-  if (!leaked.length || !helpers.length) return null;
-  return { ...plan, helpers, reserveHelpers: reserve.slice(perRound), leaked, round: plan.round + 1, perRound,
-    history: [...plan.history, result], usedHelpers, skipVotes: new Set(), skipRemaining: false };
+  const select = perfects.slice().sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active) || S(b).standing - S(a).standing || a.seat - b.seat)
+    .slice(0, m.gd.unite.maxHelpers);
+  return select.sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active) || S(b).layers - S(a).layers || S(b).standing - S(a).standing || a.seat - b.seat);
 }
 
 /** Battle options for the unite field (without data/logger, added by the match). */
@@ -277,53 +179,4 @@ export function uniteSurvivors(plan, uniteResult) {
     out.set(u.sourcePlayerId, (out.get(u.sourcePlayerId) || 0) + 1);
   }
   return out;
-}
-
-// Preserve the complete upstream path for rosters of at most four.
-function upstreamPlanUnite(m, results) {
-  if (m.isSolo) return null;
-  const alive = m.alivePlayers();
-  const leakers = [];
-  const perfects = [];
-  for (const ps of alive) {
-    const r = results.get(ps.playerId);
-    if (!r) continue;
-    const counted = (r.leaked || []).filter((l) => l && l.counted !== false);
-    if (counted.length > 0) leakers.push(ps);
-    else if (r.perfect !== false) perfects.push(ps);
-  }
-  if (!leakers.length || !perfects.length) return null;
-  const helpers = helperOrder(m, perfects, results);
-  const leaked = [];
-  const notReentered = new Map();
-  for (const ps of leakers) {
-    const r = results.get(ps.playerId);
-    for (const l of r.leaked || []) {
-      if (!l || l.counted === false) continue;
-      if (!m.gd.enemy(l.enemyKey)) { notReentered.set(ps.playerId, (notReentered.get(ps.playerId) || 0) + 1); continue; }
-      // kill bounties keep paying in 联防, and only on the card's own enemy. A split or summoned child
-      // never carries bountyId / bountyCoins (spawnChildren). A leak that still has the card's id but is
-      // some other enemy — a copy that did not go through spawnChildren — does not collect the card either
-      // (GitHub #67, #89-2; owner 2026-10-04: the main body only). A bounty set on the SpawnSpec by content
-      // is copied into mods.bountyCoins by the match and has no card to match.
-      const bountyId = l.mods && l.mods.bountyId;
-      const b = bountyId ? ps.bounties.find((x) => x.id === bountyId) : null;
-      const card = b && b.card;
-      let bounty = card && card.payout !== 'perfect' && Number(card.coin) > 0 && l.enemyKey === card.enemyKey
-        ? { coins: Math.trunc(card.coin), ownerPlayerId: ps.playerId } : null;
-      const extra = !bountyId && l.mods ? Math.trunc(Number(l.mods.bountyCoins) || 0) : 0;
-      if (!bounty && extra > 0) bounty = { coins: extra, ownerPlayerId: ps.playerId };
-      leaked.push({ enemyKey: l.enemyKey, mods: l.mods ? { ...l.mods } : null, lpr: l.lpr ?? 1, sourcePlayerId: ps.playerId, tag: l.tag ?? null, bounty });
-    }
-  }
-  return { helpers, leakers, leaked, notReentered };
-}
-
-// Preserve the complete upstream path for rosters of at most four.
-function upstreamHelperOrder(m, perfects, results) {
-  const st = new Map(perfects.map((ps) => [ps.playerId, helperStats(m, ps, results)]));
-  const S = (ps) => st.get(ps.playerId);
-  const select = perfects.slice().sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active) || S(b).standing - S(a).standing || a.seat - b.seat)
-    .slice(0, m.gd.unite.maxHelpers);
-  return select.sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active) || S(b).layers - S(a).layers || S(b).standing - S(a).standing || a.seat - b.seat);
 }
