@@ -35,13 +35,9 @@
 // `.gm[data-camera]` mirrors the current camera kind (E2E / styling). Folding the shop bar (收起) on the own prep board
 // flies the camera to the official shop-collapsed framing and unfolding back to the shop camera (public issue #5:
 // gameLogic prepCameraFor / foldCamera — never over the pen, a teammate's board or a battle; deferred while a piece is
-// dragged or its direction is chosen). A deploy is the other way round (GitHub #602, PR #646 by @Euqorab): picking up a
-// piece on the own prep board, and a legal drop's direction wheel, fold the shop bar for as long as they last and zoom
-// to that framing at once (gameLogic deployFoldsShop) while 设置「部署时收起商店」 is on (the default). Off, the pickup
-// changes neither the shop's fold nor the camera. Turning it off mid-drag gives both back on that frame
-// (gameLogic deployZoomStep / prepDeployCamera). Opening 敌方情报 while the piece is still held does not spend
-// that frame: the zoom stays owed until the pen closes (deployZoomRemember). [ASSUMED] The player's own fold
-// state comes back after. The fold flights take FOLD_CAMERA_MS (render/app/tune.js), not the generic camera flight.
+// dragged or its direction is chosen). In this branch, deploying may still temporarily fold the shop
+// (gameLogic deployFoldsShop), but never changes the camera. Only the player's persistent fold drives framing;
+// ending the drag or direction wheel therefore has no deployment zoom to restore.
 // Equipment dropped on an operator whose two slots are used opens the equip-replace dialog (ui/equipReplace.js): the
 // player picks the equipped item to destroy → g.equip {itemUid, targetUid, replaceUid}; 取消 sends nothing. 销毁 is only
 // offered for loose items (equipped ones are locked, ui/facing.js itemDestroyable).
@@ -117,7 +113,7 @@ import {
   snapHud, activeBubbles, shortcutFor, shortcutBlocked, prepShortcutsSuspended, closesOnFieldPress, phaseTotalSeconds, homeFieldId, ownFieldId, normalizeSp, normalizePersonalChoice, sortedPlayers,
   terrainInfo, deviceInfo, deviceTipAt, noteDeviceUnits, deviceUnitsForEntry,
   countdownState, shopBlockReason, stageOverrides, effectiveStage, watchTarget, dropFailureReason,
-  previewEnemyKey, prepCamera, prepCameraFor, deployFoldsShop, deployZoomStep, deployZoomRemember, prepDeployCamera, deployFieldOf, fieldTile, panelSide, panelSlots, bondPopupPlace, unitLoadout, deployedRecord,
+  previewEnemyKey, prepCamera, prepCameraFor, deployFoldsShop, foldCamera, deployFieldOf, fieldTile, panelSide, panelSlots, bondPopupPlace, unitLoadout, deployedRecord,
   mergeTarget, modeOffBonds, readyFundsPrompt, readyShopFold, ownerBandId, ownDiyRecord, ownStandIn, roundStartReplay,
 } from '../ui/gameLogic.js';
 import { toast } from '../ui/toasts.js';
@@ -372,9 +368,6 @@ function MatchScreen() {
   const prepCamKey = `${prepCam.kind}:${prepCam.opts.side}`;
   const prepCamSeen = useRef(prepCamKey);                // the prep camera last requested
   const camRef = useRef({ kind: 'prep', opts: { rect: { ...GEO.NORMAL_RECT }, side: 'L' } });
-  // the previous frame applied the deploy zoom, so turning 设置「部署时收起商店」 off mid-drag can give it back.
-  // It stays set when that release returns null only because the enemy pen is open (deployZoomRemember). [ASSUMED]
-  const deployZoomedRef = useRef(false);
   const penRef = useRef({ on: false, collapsed: false });
   // shopFolded (the own prep board's folded-shop camera state) is derived with the prep-view flags below (showPrep).
   // 准备就绪 folds the shop bar, cancelling it unfolds the bar again (GitHub #138; gameLogic readyShopFold): the board is set,
@@ -469,10 +462,8 @@ function MatchScreen() {
     ownPrep: !!view && viewModeRef.current === 'prep' && showPrep, editable, pen, drag: !!drag, facing: !!facing,
     enabled: playerSettings.prepDeployFold !== false,
   });
-  // the shop bar is shown folded (收起; the pen folds it for itself: the player's own state is the one it returns to) —
-  // the own prep board then takes the official shop-collapsed camera (public issue #5, gameLogic prepCameraFor);
-  // a deploy interaction folds it for the interaction's duration (public issue #602).
-  const shopFolded = showShop && (pen ? penRef.current.collapsed : (collapsed || deployFold));
+  // Camera framing follows only the persistent shop state, not the temporary deployment fold.
+  const shopFolded = showShop && (pen ? penRef.current.collapsed : collapsed);
   // the shop bar / board layout's displayed fold: the player's 收起 state, temporarily folded while deploying.
   const barCollapsed = collapsed || deployFold;
 
@@ -725,31 +716,16 @@ function MatchScreen() {
     setCam(pc.kind, pc.opts);
   }, [view, prepCamKey, showPrep]);
 
-  // the shop bar folded (收起) or unfolded on the own prep board (public issue #5: the board did not grow, while the
-  // battle and scouting views had no bar to make room for): the official shop-collapsed camera or the shop camera
-  // again, flown like any camera change. Never over the pen or a teammate's board or in battle; a hand-made fold is
-  // deferred while a piece is dragged or its direction is chosen (the drop target and the wheel sit on tiles of the
-  // camera in use) and this effect runs again when that ends (gameLogic foldCamera). Picking reads the camera of
-  // every frame (render/pick.js). A deploy interaction is the opposite (public issue #602, gameLogic
-  // deployFoldsShop) while 设置「部署时收起商店」 is on: it zooms to the shop-collapsed camera as soon as the piece is
-  // picked up, for the drag and the wheel's whole duration, and restores the player's own shop state when it ends.
-  // Turning the setting off mid-drag releases that zoom on this one frame even while the piece is still held
-  // (deployZoomedRef); later frames of the same drag do not, so a hand-made 收起 still waits. Opening 敌方情报
-  // during the held drag makes that release frame return null; the zoom stays owed until the pen closes
-  // (deployZoomRemember). [ASSUMED] no official source settles that order.
+  // Manual shop folding still reframes the own board, deferred during drag / facing.
+  // Deployment's temporary bar collapse never requests a zoom or a restore.
   useEffect(() => {
-    const step = deployZoomStep(deployZoomedRef.current, deployFold);
-    const next = prepDeployCamera({
-      pub, myId, deployFold, releaseDeploy: step.release, folded: shopFolded,
+    const next = foldCamera({
+      pub, myId, folded: shopFolded,
       ownPrep: !!view && viewModeRef.current === 'prep' && showPrep,
       pen, busy: !!drag || !!facing, current: camRef.current,
     });
-    // a null release because the pen is open stays owed; a null only because the camera already
-    // matches the player's fold spends it. [ASSUMED]
-    deployZoomedRef.current = deployZoomRemember(step, { next, pen });
-    // the fold zoom and the restore fly with the short FOLD_CAMERA_MS, not a generic camera flight
     if (next) setCam(next.kind, { ...next.opts, ms: FOLD_CAMERA_MS });
-  }, [view, deployFold, shopFolded, showPrep, pen, !!drag, !!facing, prepCamKey]);
+  }, [view, shopFolded, showPrep, pen, !!drag, !!facing, prepCamKey]);
 
   // 联防 / 最终攻势: the ‹ › pill moves the camera between the field's halves and 全景 (research 09 §3.1)
   useEffect(() => {

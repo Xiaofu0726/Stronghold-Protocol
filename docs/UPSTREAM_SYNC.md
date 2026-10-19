@@ -5,6 +5,8 @@
 - `master` 精确指向 `sganggs/Stronghold-Protocol:master` 的提交，不添加本仓库自己的提交或文件。
 - `feat/20-player-rooms` 保存上游内容、[20 人扩展](PLAYER_CAPACITY.md)及维护这项扩展的测试、文档和同步工作流。
 
+另按服主要求保留一项界面定制：部署期间不自动拉近镜头，结束时也不触发镜头恢复；商店临时收起及手动镜头切换保持原行为。这项差异适用于所有房间容量，由镜头回归测试随同步验证。
+
 默认分支是 `feat/20-player-rooms`。GitHub 的 schedule 只从默认分支运行，因此自定义工作流放在这个分支，避免污染镜像 master。
 它不是继续自动合并 LongQianChen 分支的新功能；该分支只用作最初的扩容参考，后续只跟踪 sganggs/master。
 
