@@ -41,7 +41,7 @@
 .guide__chname { font-size: calc(.19 * var(--t)); font-weight: 700; letter-spacing: .1em; }
 .guide__chmicro { font-family: var(--font-display); font-size: calc(.1 * var(--t)); letter-spacing: .24em; opacity: .75; }
 .guide__close {
-  width: .56rem; height: .56rem; display: grid; place-items: center; flex: none;
+  width: .56rem; height: .56rem; padding: 0; display: grid; place-items: center; flex: none;
   background: rgba(0, 0, 0, .35); border: 1px solid var(--line-2); color: var(--text-md);
   transition: color var(--t-fast), border-color var(--t-fast), background var(--t-fast);
 }

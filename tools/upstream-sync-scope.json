@@ -14,6 +14,7 @@
     "public/css/screens/game.css",
     "public/css/screens/lobby.css",
     "public/css/screens/room.css",
+    "public/css/screens/guide.css",
     "public/i18n/en.json",
     "public/i18n/ja.json",
     "public/i18n/ko.json",
