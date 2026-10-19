@@ -81,10 +81,6 @@
     "test/ui/playtest4.test.js",
     "tools/check-four-player-parity.mjs",
     "tools/sync-upstream.mjs",
-    "tools/upstream-sync-scope.json",
-    "docs/design/client.md",
-    "test/ui/issue602-deploy-fold.test.js",
-    "test/ui/issue5-fold-camera.test.js",
-    "test/ui/deploy-steady-camera.test.js"
+    "tools/upstream-sync-scope.json"
   ]
 }

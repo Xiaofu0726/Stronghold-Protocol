@@ -2,8 +2,6 @@
 
 Part of [DESIGN.md](../DESIGN.md) (the index; section numbers are global).
 
-**本 fork 的界面例外：** `feat/20-player-rooms` 取消部署干员、装备和调整站位时的自动镜头拉近及结束后的恢复；商店临时收起仍遵循原设置，手动收起/展开商店、敌方情报和战斗镜头保留原行为。此项对所有房间容量生效。下文中的上游部署缩放说明在本分支不适用。
-
 ## 9. Client rendering contract (public/js/render)
 
 **Operator skins (§34.23, [SKINS.md](../SKINS.md)).** [ASSUMED] Retain received skin IDs separately from displayed

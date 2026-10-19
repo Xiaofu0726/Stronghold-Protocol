@@ -1,4 +1,3 @@
-// Upstream helper tests retained below; branch wiring deliberately disables the camera zoom.
 // Public issue #602: "[Feature] 操作体验优化：部署干员、装备时棋盘缩放" — the official client folds the shop and
 // zooms the own prep board while a piece is picked up for 部署干员 / 装备 (and while a legal drop's direction wheel is
 // open), then gives the player's own 收起/展开 state back. The clone kept the shop open through the drag, so the board
@@ -226,17 +225,22 @@ describe('game.js wiring', () => {
 
   test('deployFold is derived from the interaction state on the own editable prep board, never written into `collapsed`', () => {
     assert.match(game, /const deployFold = deployFoldsShop\(\{\n\s+ownPrep: !!view && viewModeRef\.current === 'prep' && showPrep, editable, pen, drag: !!drag, facing: !!facing,\n\s+enabled: playerSettings\.prepDeployFold !== false,\n\s+\}\);/);
-    // The temporary fold changes the bar, not the camera state.
-    assert.match(game, /const shopFolded = showShop && \(pen \? penRef\.current\.collapsed : collapsed\);/);
+    // the player's own state feeds the camera state only ORed with the temporary fold (pen behavior untouched)
+    assert.match(game, /const shopFolded = showShop && \(pen \? penRef\.current\.collapsed : \(collapsed \|\| deployFold\)\);/);
     assert.match(game, /const barCollapsed = collapsed \|\| deployFold;/);
     // nothing ever persists the temporary fold as the player's 收起/展开 state
     assert.doesNotMatch(game, /setCollapsed\(\s*(?:deployFold|barCollapsed)\b/);
   });
 
-  test('deployment does not request a camera zoom or restore in this branch', () => {
-    assert.match(game, /const next = foldCamera\(\{/);
-    assert.doesNotMatch(game, /deployZoomedRef|deployZoomStep|deployZoomRemember|prepDeployCamera/);
-    assert.equal(FOLD_CAMERA_MS < CAMERA_MS, true);
+  test('the camera effect zooms on pickup and restores through prepDeployCamera, on the short flight', () => {
+    assert.match(game, /const step = deployZoomStep\(deployZoomedRef\.current, deployFold\);\n\s+const next = prepDeployCamera\(\{\n\s+pub, myId, deployFold, releaseDeploy: step\.release, folded: shopFolded,\n\s+ownPrep: !!view && viewModeRef\.current === 'prep' && showPrep,\n\s+pen, busy: !!drag \|\| !!facing, current: camRef\.current,\n\s+\}\);\n\s+\/\/ a null release because the pen is open stays owed; a null only because the camera already\n\s+\/\/ matches the player's fold spends it\. \[ASSUMED\]\n\s+deployZoomedRef\.current = deployZoomRemember\(step, \{ next, pen \}\);/);
+    assert.doesNotMatch(game, /deployZoomedRef\.current = step\.zoomed/);
+    const call = game.indexOf('const next = prepDeployCamera({');
+    const effectEnd = game.indexOf('}, [view, deployFold, shopFolded, showPrep, pen, !!drag, !!facing, prepCamKey]);', call);
+    assert.ok(call > 0 && effectEnd > call, 'deployFold stays in the effect deps');
+    assert.equal(FOLD_CAMERA_MS < CAMERA_MS, true, `${FOLD_CAMERA_MS} ms is shorter than the ${CAMERA_MS} ms camera flight`);
+    assert.equal((game.match(/ms: FOLD_CAMERA_MS/g) || []).length, 1, 'the pickup zoom and the fold / unfold restore share one flight');
+    assert.match(game, /import \{ FOLD_CAMERA_MS \} from '\.\.\/render\/app\/tune\.js';/);
   });
 
   test('every shop / board-layout consumer shows the temporary fold while leaving the real state alone', () => {
