@@ -395,24 +395,26 @@ export function LobbyScreen() {
         <div class="diff-list">
           ${DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
         </div>
-        ${roomMode === 'coop' ? html`<div class="capacity-select">
-          <div class="capacity-select__label">${t('同盟席位')} <${MicroLabel}>ROOM CAPACITY<//></div>
-          <div class="capacity-select__options" role="radiogroup" aria-label=${t('同盟人数上限')}>
-            ${ROOM_CAPACITIES.map((n) => html`<button key=${n} type="button" role="radio" aria-checked=${capacity === n ? 'true' : 'false'}
-              class=${`capacity-select__opt${capacity === n ? ' is-active' : ''}`} onClick=${() => setCapacity(n)}>${t('{n} 人', { n })}</button>`)}
-          </div>
-        </div>` : null}
         <div class="create-box">
           ${testMode ? html`<label class="create-box__test" data-testid="create-test">
             <input type="checkbox" checked=${asTest} onChange=${(e) => setAsTest(e.target.checked)} />
             <span>${t('测试房间')}</span>
             <em class="t-dim">${t('不计入战绩。房间会标明「测试」，只有房主能使用测试指令。')}</em>
           </label>` : null}
+          <div class=${roomMode === 'coop' ? 'create-box__row create-box__row--coop' : 'create-box__row'}>
+          ${roomMode === 'coop' ? html`<label class="capacity-select">
+            <span class="capacity-select__label">${t('同盟席位')}</span>
+            <select class="capacity-select__input" aria-label=${t('同盟人数上限')} value=${capacity}
+              onChange=${(e) => setCapacity(Number(e.currentTarget.value))}>
+              ${ROOM_CAPACITIES.map((n) => html`<option key=${n} value=${n}>${t('{n} 人', { n })}</option>`)}
+            </select>
+          </label>` : null}
           <${Tooltip} block=${true} text=${online ? null : t('正在连接服务器…')}>
             <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" loading=${busy === 'create'} disabled=${!online} onClick=${create}>
               ${roomMode === 'solo' ? t('开始独立模拟') : t('创建同盟')}
             <//>
           <//>
+          </div>
           <div class="create-box__hint">
             ${online
               ? html`<span>${roomMode === 'solo' ? t('创建后即可开始模拟') : t('创建后可邀请好友或添加 AI 队友')}</span>`

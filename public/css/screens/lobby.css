@@ -250,10 +250,16 @@
 .create-box .btn--xl { height: .92rem; font-size: calc(.32 * var(--t)); letter-spacing: .3em; }
 .create-box__hint { display: flex; align-items: center; justify-content: center; min-height: .3rem; font-size: calc(.14 * var(--t)); color: var(--text-lo); }
 
-.capacity-select { display: flex; align-items: center; justify-content: space-between; gap: .18rem; margin-top: .2rem; padding: .14rem .18rem; border: 1px solid var(--line-2); background: rgba(9, 13, 11, .7); }
-.capacity-select__label { display: flex; flex-direction: column; flex: none; color: var(--text-md); font-size: calc(.19 * var(--t)); font-weight: 700; }
-.capacity-select__options { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .06rem; }
-.capacity-select__opt { min-width: .66rem; height: .42rem; padding: 0 .12rem; border: 1px solid var(--line-2); background: rgba(255, 255, 255, .03); color: var(--text-lo); font-size: calc(.16 * var(--t)); font-weight: 700; }
-.capacity-select__opt:hover { color: var(--text-hi); border-color: var(--mint-600); }
-.capacity-select__opt.is-active { color: var(--mint-400); border-color: var(--mint-500); background: var(--mint-a20); }
+.create-box__row--coop { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; gap: .12rem; }
+.create-box__row--coop > * { min-width: 0; }
+.create-box__row--coop .btn--xl { min-height: 44px; padding: 0 .18rem; font-size: calc(.26 * var(--t)); letter-spacing: .08em; gap: .08rem; }
+.create-box__row--coop .btn__label { min-width: 0; white-space: normal; line-height: 1.2; }
+.capacity-select { display: flex; align-items: center; gap: .1rem; min-width: 0; min-height: 44px; padding: .08rem .12rem; border: 1px solid var(--line-2); background: rgba(9, 13, 11, .7); }
+.capacity-select__label { flex: none; color: var(--text-md); font-size: calc(.18 * var(--t)); font-weight: 700; }
+.capacity-select__input { flex: 1; min-width: 0; height: .5rem; padding: 0 .06rem; border: 1px solid var(--line-2); background: var(--bg-1); color: var(--mint-400); font-size: calc(.2 * var(--t)); cursor: pointer; }
+@media (max-width: 800px) and (max-height: 400px) {
+  .lobby-right .diff-card { padding-top: .06rem; padding-bottom: .06rem; }
+  .lobby-right .diff-list { gap: .04rem; }
+  .lobby-right .create-box { margin-top: .08rem; }
+}
 
