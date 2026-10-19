@@ -83,3 +83,6 @@ node tools/check-four-player-parity.mjs --upstream /path/to/clean-upstream-check
 上游对照目录须已安装依赖并运行 `node tools/vendor.mjs`。工具不修改两个仓库的源码。
 这是游戏行为兼容性检查，不要求四人房的大厅/房间容量控件、人数说明或新增协议字段与上游相同。
 全局协议允许 0–19 座，因此手写非法席位请求的校验错误也可能与原先的 0–3 座协议不同。
+
+另有默认关闭的插件模式扩展：[固定盟约配置](MODE_BANDS.md)。它只有在所选模式显式配置时才启用，
+普通四人/二十人房间的选盟约流程保持原样。

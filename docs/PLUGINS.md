@@ -780,6 +780,11 @@ Supported files: enemies, waves, stages, modes, items, bands, garrisons, effects
   The base's choice schedule is copied. Changes to that schedule can then be patched explicitly. `GameData` overlays
   mode-level economy, DP, timers and other global configuration keys; omitted values retain the official defaults.
   Explicit mode chess purchase/sale prices override record prices. A room picks a mode with `room.setMode` (§11).
+  This fork additionally accepts optional mode-level `bandDraft: { fixedBandId: "band_ducklord" }`.
+  It assigns that band to every participant (including AI), sets its starting LP and skips BAND_DRAFT after INFO_CHECK.
+  Duplicate bands are intentional here. The band must exist and allow the mode's SINGLE/MULTI type; invalid references
+  fail content validation. Omission retains the ordinary draft and RNG sequence. This is a fork extension, not an
+  upstream API guarantee; keep it in the plugin's own mode rather than patching official modes. See [MODE_BANDS.md](MODE_BANDS.md).
 - New or changed stages get ground paths from the same `Grid` helper as build-data (`server/sim/groundPaths.js`), with and
   without active devices; deployment lists are derived too. The board stays 19×21. A base stage is the easiest start.
   A plugin that changes only a wave's `routes` or `extraRoutes` recomputes `groundPaths` for stages listed on modes

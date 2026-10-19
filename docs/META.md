@@ -41,6 +41,10 @@ server/match/
 
 ## 1. Match flow
 
+Fork-only optional fixed-band modes skip BAND_DRAFT after INFO_CHECK; all participants receive the configured band
+and starting LP. Without mode-level `bandDraft.fixedBandId`, the flow below is unchanged. See [MODE_BANDS.md](MODE_BANDS.md).
+Normal `onBattleStart` events include `routes`, as boss events do, for plugin spawn planning.
+
 ```
 LOBBY → INFO_CHECK (co-op 25 s; solo and single-human matches untimed; all humans confirmed ⇒ next) → BAND_DRAFT → BATTLE_CHECK (3 s)
 → for r = 1..lastRound (+ hidden):

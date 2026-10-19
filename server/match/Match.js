@@ -207,6 +207,7 @@ import { PHASE, modeIdFor } from '../../shared/constants.js';
 import { isContentHash } from '../../shared/plugins/identity.js';
 import { Battle } from '../sim/Battle.js';
 import { installCapacityMatch } from './capacity/install.js';
+import { installModeBand } from './modeBand.js';
 import { DataSource } from '../sim/simdata.js';
 import { createRng, deriveSeed } from '../sim/rng.js';
 import { GameData } from './gamedata.js';
@@ -534,3 +535,4 @@ for (const part of [MatchPlatform, MatchInfra, MatchMessaging, MatchViews, Match
 }
 
 installCapacityMatch(Match);
+installModeBand(Match);
