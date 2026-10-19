@@ -325,7 +325,7 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 @keyframes drawer-in { from { opacity: 0; transform: translate(-50%, -.2rem); } }
 .edrawer__top { display: flex; align-items: flex-end; justify-content: space-between; padding: .08rem .12rem 0 .16rem; border-bottom: 1px solid var(--line); }
 .edrawer__top .tabs { border-bottom: 0; }
-.edrawer__close { width: .34rem; height: .34rem; margin-bottom: .06rem; display: grid; place-items: center; background: none; border: 1px solid var(--line-2); color: var(--text-lo); }
+.edrawer__close { width: .34rem; height: .34rem; margin-bottom: .06rem; padding: 0; display: grid; place-items: center; background: none; border: 1px solid var(--line-2); color: var(--text-lo); }
 .edrawer__close .icon { width: .18rem; height: .18rem; }
 .edrawer__body { overflow: auto; padding: .14rem .18rem .18rem; display: flex; flex-direction: column; gap: .12rem; }
 .edrawer__sum { display: flex; align-items: center; justify-content: space-between; gap: .12rem; flex-wrap: wrap; font-size: calc(.15 * var(--t)); color: var(--text-md); }
