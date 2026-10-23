@@ -34,7 +34,7 @@ test('four-player helper selection keeps the upstream configurable limit and pla
     leaked: i === 0 ? [{ enemyKey: 'enemy_1007_slime', counted: true, spawned: true, lpr: 1 }] : [],
   }]));
   const perfects = h.m.order.slice(1);
-  assert.deepEqual(helperOrder(h.m, perfects, results).map(p => p.playerId), ['p_1', 'p_2', 'p_3']);
+  assert.deepEqual(helperOrder(h.m, perfects, results).map(p => p.playerId).sort(), ['p_1', 'p_2', 'p_3']);
   const plan = planUnite(h.m, results);
   assert.equal(plan.helpers.length, 3);
   assert.deepEqual(Object.keys(plan), ['helpers', 'leakers', 'leaked', 'notReentered']);

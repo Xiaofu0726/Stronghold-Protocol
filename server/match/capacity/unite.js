@@ -1,5 +1,11 @@
 // Additional waves for rosters larger than four; base leak/bounty planning stays upstream.
+import { createRng, deriveSeed } from '../../sim/rng.js';
 import { MAX_UNITE_HELPERS, uniteRoundLimit } from '../../../shared/playerCapacity.js';
+
+/** Shuffle selected helpers once per game round, independently of shop/wave/plugin RNG streams. */
+export function randomUniteOrder(m, helpers) {
+  return createRng(deriveSeed(m.seed, 'unite-order:' + m.round)).shuffle(helpers.slice());
+}
 
 export function capacityUnitePlan(m, plan) {
   const ordered = plan.helpers;
@@ -21,7 +27,7 @@ export function capacityHelperOrder(m, perfects, results, helperStats) {
     ordered.push(...selected.slice(i, i + perRound).sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active)
       || S(b).layers - S(a).layers || S(b).standing - S(a).standing || a.seat - b.seat));
   }
-  return ordered;
+  return randomUniteOrder(m, ordered);
 }
 
 /** Count the enemies the next wave would have to face when a wave could not run. */

@@ -101,7 +101,7 @@ function runValidation(cwd, master) {
     git(cwd, ['worktree', 'add', '--detach', scratch, master]); added = true;
     fs.symlinkSync(path.join(cwd, 'node_modules'), path.join(scratch, 'node_modules'), 'junction');
     node(scratch, ['tools/vendor.mjs']);
-    node(cwd, ['tools/check-four-player-parity.mjs', '--upstream', scratch]);
+    node(cwd, ['tools/check-four-player-parity.mjs', '--upstream', scratch, '--random-unite-order']);
   } finally {
     // Only remove this freshly created temporary worktree; never a user checkout.
     if (added) git(cwd, ['worktree', 'remove', '--force', scratch]);

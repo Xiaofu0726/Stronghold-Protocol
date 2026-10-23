@@ -35,7 +35,7 @@
 // while the field runs (a split child, a summon) never crossed the leaker's own goal, so the field tags it `uniteRuntime`
 // at birth (sim/battle/spawns.js) and neither uniteSurvivors nor the HUD's ×N reads it.
 
-import { capacityUnitePlan, capacityHelperOrder } from './capacity/unite.js';
+import { capacityUnitePlan, capacityHelperOrder, randomUniteOrder } from './capacity/unite.js';
 export { plannedUniteSurvivors, uniteRemainingLeaks, uniteReserveHelpers, nextUnitePlan } from './capacity/unite.js';
 import { buildUniteWave } from './waves.js';
 import { layerGainRoom } from '../../shared/constants.js';
@@ -117,7 +117,7 @@ export function helperStats(m, ps, results) {
 
 /**
  * The ≤ maxHelpers helpers, first = the one that meets the enemies first (right-hand field): selection by units >
- * active bond > standing units > seat, then the pair ordered by units > active bond > layers > standing > seat.
+ * active bond > standing units > seat, then random entry order (fork rule, for all room sizes).
  */
 export function helperOrder(m, perfects, results) {
   if ((m.order?.length ?? m.alivePlayers?.()?.length ?? 4) > 4) return capacityHelperOrder(m, perfects, results, helperStats);
@@ -125,7 +125,7 @@ export function helperOrder(m, perfects, results) {
   const S = (ps) => st.get(ps.playerId);
   const select = perfects.slice().sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active) || S(b).standing - S(a).standing || a.seat - b.seat)
     .slice(0, m.gd.unite.maxHelpers);
-  return select.sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active) || S(b).layers - S(a).layers || S(b).standing - S(a).standing || a.seat - b.seat);
+  return randomUniteOrder(m, select.sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active) || S(b).layers - S(a).layers || S(b).standing - S(a).standing || a.seat - b.seat));
 }
 
 /** Battle options for the unite field (without data/logger, added by the match). */

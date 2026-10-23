@@ -4,7 +4,7 @@ import { PHASE } from '../../shared/constants.js';
 import { makeMatch } from './harness.js';
 import { FakeBattle } from './fakeBattle.js';
 import { validateC2S } from '../../shared/protocol.js';
-import { nextUnitePlan } from '../../server/match/unite.js';
+import { helperOrder, nextUnitePlan } from '../../server/match/unite.js';
 
 test('a unite progress frame reports every leaker in a twenty-player match', () => {
   const left = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`p_${i}`, i + 1]));
@@ -33,21 +33,21 @@ for (const clientCombat of [false, true]) {
     h.ps('p_0').lp = 30;
     h.drive(() => m.phase === PHASE.UNITE && m.unitePlan.round === 1);
     const first = m.unitePlan.helpers.map((p) => p.playerId);
-    assert.deepEqual(first, ['p_1', 'p_2']);
-    assert.deepEqual(m.unitePlan.reserveHelpers.map((p) => p.playerId), ['p_3', 'p_4']);
+    const reserve = m.unitePlan.reserveHelpers.map((p) => p.playerId);
+    assert.deepEqual([...first, ...reserve].sort(), ['p_1', 'p_2', 'p_3', 'p_4']);
     assert.deepEqual([m.publicView().unite.round, m.publicView().unite.roundsMax], [1, 2]);
     h.drive(() => m.phase === PHASE.UNITE && m.unitePlan.round === 2);
     const second = m.unitePlan.helpers.map((p) => p.playerId);
-    assert.deepEqual(second, ['p_3', 'p_4']);
+    assert.deepEqual(second, reserve);
     assert.equal(new Set([...first, ...second]).size, 4);
     assert.equal(m.unitePlan.leaked.length, 3, 'only first-wave survivors re-enter');
     assert.deepEqual([m.publicView().unite.round, m.publicView().unite.roundsMax], [2, 2]);
     h.drive(() => m.phase === PHASE.SETTLE);
     assert.equal(new Set(FakeBattle.instances.filter((b) => b.kind === 'unite').map((b) => b.opts.seed)).size, 2);
     assert.equal(h.ps('p_0').lp, 29, 'only the final survivor costs the original leaker LP');
-    assert.equal(h.ps('p_1').pendingFunds, 5, 'first-wave bounty credits survive second-wave settlement');
-    assert.equal(h.ps('p_3').pendingFunds, 7);
-    assert.ok(h.ps('p_1').stats.dmgDealt >= 123 && h.ps('p_3').stats.dmgDealt >= 456);
+    assert.equal(h.ps(first[0]).pendingFunds, 5, 'first-wave bounty credits survive second-wave settlement');
+    assert.equal(h.ps(second[0]).pendingFunds, 7);
+    assert.ok(h.ps(first[0]).stats.dmgDealt >= 123 && h.ps(second[0]).stats.dmgDealt >= 456);
     assert.deepEqual(m.publicView().uniteResult, {
       through: 1, helpers: [...first, ...second], leakers: ['p_0'],
       losses: Object.fromEntries(m.order.map((p) => [p.playerId, p.playerId === 'p_0' ? 1 : 0])),
@@ -92,3 +92,34 @@ test('second unite wave preserves duplicate enemies by source and mods and respe
   assert.deepEqual(next.leaked.map((l) => [l.sourcePlayerId, l.mods.rank, l.bounty.coins]),
     [['p_0', 1, 3], ['p_0', 2, 5], ['p_1', 1, 7]]);
 });
+
+for (const humans of [1, 2, 3, 4, 8, 20]) {
+  test(humans + ' players: helper order is reproducible, random and keeps selection limits', t => {
+    const h = makeMatch({ humans, fake: true, seed: 123 });
+    t.after(() => h.m.dispose());
+    const m = h.m;
+    m.round = 5;
+    const candidates = m.order.slice(1);
+    const ids = players => players.map(p => p.playerId);
+    const first = ids(helperOrder(m, candidates, new Map()));
+    const limit = humans > 4 ? Math.min(10, 2 * m.poolGroups.length) : 2;
+    assert.deepEqual(first.slice().sort(), ids(candidates.slice(0, limit)).sort());
+    assert.deepEqual(ids(helperOrder(m, candidates.slice().reverse(), new Map())), first);
+    const streamStates = () => ['rngSetup', 'rngShop', 'rngWaves', 'rngDraft', 'rngBots', 'rngMeta'].map(k => m[k].state());
+    const before = streamStates();
+    const orders = new Set();
+    for (let seed = 1; seed <= 32; seed++) {
+      m.seed = seed;
+      const order = ids(helperOrder(m, candidates, new Map()));
+      assert.deepEqual(ids(helperOrder(m, candidates, new Map())), order);
+      assert.deepEqual(order.slice().sort(), first.slice().sort());
+      orders.add(order.join(','));
+    }
+    assert.deepEqual(streamStates(), before, 'ordering consumes no existing random stream');
+    if (first.length > 1) assert.ok(orders.size > 1, 'different matches can change entry order');
+    m.seed = 123;
+    const rounds = new Set();
+    for (m.round = 1; m.round <= 20; m.round++) rounds.add(ids(helperOrder(m, candidates, new Map())).join(','));
+    if (first.length > 1) assert.ok(rounds.size > 1, 'a new game round can change entry order');
+  });
+}

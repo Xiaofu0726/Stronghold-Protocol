@@ -41,8 +41,6 @@ server/match/
 
 ## 1. Match flow
 
-Fork-only optional fixed-band modes skip BAND_DRAFT after INFO_CHECK; all participants receive the configured band
-and starting LP. Without mode-level `bandDraft.fixedBandId`, the flow below is unchanged. See [MODE_BANDS.md](MODE_BANDS.md).
 Normal `onBattleStart` events include `routes`, as boss events do, for plugin spawn planning.
 
 ```
@@ -1083,7 +1081,9 @@ reconnectable, spectator-readable snapshot. Bots resolve immediately. Sources, b
 
 ## Fork: 20 人房间
 
-本分支的容量、固定卡池组与并行选卡见 [20 人房间扩展](PLAYER_CAPACITY.md)。1–4 人保留上游流程。
+本分支的容量、固定卡池组与并行选卡见 [20 人房间扩展](PLAYER_CAPACITY.md)。1–4 人保留上游流程，协防入场顺序除外。
 
 四人对局的联防计划、结算事件形状也保持上游；`uniteResults` 只在大房间结算中出现。
-可用 `tools/check-four-player-parity.mjs --upstream <upstream-checkout>` 对照消息、事件、随机流和库存。
+所有人数房间先按原规则选人，再以独立的对局种子/回合号随机打乱协防队列；大房间后续援助依次取用。
+可用 `tools/check-four-player-parity.mjs --upstream <upstream-checkout>` 对照消息、事件、随机流和库存，
+协防随机顺序是预期差异；加 `--random-unite-order` 可在上游对照实例应用同样规则后检查其他行为。

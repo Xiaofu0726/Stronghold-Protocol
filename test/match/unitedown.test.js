@@ -47,7 +47,7 @@ function scenario(clientCombat) {
   dead.add(down1.uid);
   dead.add(down2.uid);
   h.drive(() => m.phase === PHASE.UNITE);
-  assert.deepEqual(m.unitePlan.helpers.map((p) => p.playerId), ['p_1', 'p_2']);
+  assert.deepEqual(m.unitePlan.helpers.map((p) => p.playerId).sort(), ['p_1', 'p_2']);
   return { h, m, down1, up1, down2, up2 };
 }
 

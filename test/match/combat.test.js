@@ -121,7 +121,7 @@ test('elimination: LP ≤ 0 → out, copies back to the pool; everyone out → R
   m.dispose();
 });
 
-test('联防: trigger, helpers (≤ 2, highest LP then seat), carry state, sources, survivors cost the SOURCE (cap 10)', () => {
+test('联防: trigger, helpers (≤ 2, random entry order), carry state, sources, survivors cost the SOURCE (cap 10)', () => {
   const h = makeMatch({
     mode: 'coop', humans: 4, seed: 34, fake: true,
     script: (b) => {
@@ -140,14 +140,14 @@ test('联防: trigger, helpers (≤ 2, highest LP then seat), carry state, sourc
   h.drive(() => m.phase === PHASE.UNITE);
   const plan = m.unitePlan;
   assert.deepEqual(plan.leakers.map((p) => p.playerId).sort(), ['p_0', 'p_3']);
-  assert.deepEqual(plan.helpers.map((p) => p.playerId), ['p_1', 'p_2'], 'equal LP → lower seat first');
+  assert.deepEqual(plan.helpers.map((p) => p.playerId).sort(), ['p_1', 'p_2'], 'the same eligible helpers enter in random order');
   const u = FakeBattle.instances.find((b) => b.kind === 'unite');
   assert.equal(u.fieldId, 'u');
   assert.deepEqual(u.opts.rect, GEO.UNITE_RECT);
   assert.equal(u.opts.flags.layerGainsEnabled, false);
   // unite.js (research 08 §5): the first-ranked helper "率先迎敌" on the right-hand field (colOffset +8)
-  assert.deepEqual(u.opts.players.map((p) => [p.playerId, p.colOffset]), [['p_1', 8], ['p_2', 0]]);
-  const carried = u.opts.players[0].units.find((x) => x.uid === unit.uid);
+  assert.deepEqual(u.opts.players.map((p) => [p.playerId, p.colOffset]), plan.helpers.map((p, i) => [p.playerId, i === 0 ? 8 : 0]));
+  const carried = u.opts.players.find((p) => p.playerId === 'p_1').units.find((x) => x.uid === unit.uid);
   assert.deepEqual(carried.carryState, { hpPct: 0.5, sp: 3 }, 'HP%/SP from the end of the own combat');
   assert.equal(u.opts.spawns.length, 18, 'union of every counted leak');
   assert.equal(u.opts.spawns.filter((s) => s.sourcePlayerId === 'p_0').length, 6);

@@ -84,12 +84,12 @@ test('settlement retains hidden-layer gains from the server result', () => {
   } finally { h.m.dispose(); }
 });
 
-test('hidden layers contribute to unite pair ordering while inactive layers do not', () => {
+test('unite helper stats count active hidden layers while entry order is random', () => {
   const player = (id, seat, layers) => ({ playerId: id, seat, deployCount: 1, board: new Map(),
     layers: { soloShip: layers, suntShip: 999 }, bonds: {
       soloShip: { active: true, layers }, suntShip: { active: false, layers: 999 },
     } });
   const a = player('p_0', 0, 5), b = player('p_1', 1, 8), m = { gd }, results = new Map();
   assert.equal(helperStats(m, b, results).layers, 8);
-  assert.deepEqual(helperOrder(m, [a, b], results).map((p) => p.playerId), ['p_1', 'p_0']);
+  assert.deepEqual(helperOrder(m, [a, b], results).map((p) => p.playerId).sort(), ['p_0', 'p_1']);
 });

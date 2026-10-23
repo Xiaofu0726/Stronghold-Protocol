@@ -6,9 +6,7 @@ Part of [DESIGN.md](../DESIGN.md) (the index; section numbers are global).
 
 ### 6.1 State machine (Match.js)
 
-Fork extension: a mode may explicitly set `bandDraft.fixedBandId` to assign every participant the same allowed band
-and its starting LP after INFO_CHECK, skipping only BAND_DRAFT. Absent configuration keeps the flow and RNG below.
-See [MODE_BANDS.md](../MODE_BANDS.md); the optional handler is independent of the capacity-specific draft methods.
+Fork extension: normal `onBattleStart` events expose their `routes` table, as boss events do, for plugin spawn planning.
 
 ```
 LOBBY(room) → INFO_CHECK (co-op 25 s; solo and any single-human match untimed (§18.2); all ready ⇒ skip; the operator loadout (§16) locks when it ends) → BAND_DRAFT (co-op: random order — the room option 「AI 队友最后选择」 (host, off by default; `room.setAiPicksLast`) puts every human seat before every AI seat, each group keeping the drawn order, and draws no extra random number; a skipping human goes behind the other humans still to pick and ahead of the AI seats, or to the very end when no other human remains [ASSUMED] —, ONE countdown — `BAND_TURN_SECONDS` 50 s per turn = m.public.deadline, AI seats pick at once, 1 skip each, a strategy a teammate already took is refused (队友已选), timeout ⇒ the strategy the player highlights (`g.bandFocus`) while free, else band_bldsk, else the first free one; solo: free pick, no timer, no skip; a single human: untimed) → BATTLE_CHECK (3 s)
@@ -232,4 +230,5 @@ These do not alter the default rules above. See
 
 扩容分支的规则见 [20 人房间扩展](../PLAYER_CAPACITY.md)，仅大房间启用分组并行选卡；默认房间容量和 AI 选卡选项沿用上游。
 
-开局不超过 4 人时，联防与结算同样使用上游原方法，保留上游结算钩子的字段以及可配置的援助人数上限。
+开局不超过 4 人时，保留上游联防选人、可配置的援助人数上限与结算钩子字段。
+分支自定义规则：所有人数房间的已选协防玩家每回合随机排序一次，后续援助沿用队列；首位在右半场先接敌。

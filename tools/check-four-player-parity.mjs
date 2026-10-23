@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 const arg = process.argv.indexOf('--upstream');
 if (arg < 0 || !process.argv[arg + 1]) throw new Error('Usage: node tools/check-four-player-parity.mjs --upstream <clean upstream checkout>');
+const randomUnite = process.argv.includes('--random-unite-order');
 const base = pathToFileURL(path.resolve(process.argv[arg + 1]) + path.sep);
 const scratch = fs.mkdtempSync(path.join(tmpdir(), 'sp-four-player-parity-'));
 const scratchUrl = pathToFileURL(scratch + path.sep);
@@ -16,12 +17,27 @@ for (const [name, root] of [['base', base], ['fork', fork]]) {
   fs.writeFileSync(new URL(`./parity-harness-${name}.mjs`, scratchUrl), text);
 }
 const upstream = await import(new URL('parity-harness-base.mjs', scratchUrl));
+const { createRng, deriveSeed } = await import(new URL('server/sim/rng.js', base));
 const capacity = await import(new URL('parity-harness-fork.mjs', scratchUrl));
 function run(harness, options) {
   const trace = [], hooks = [];
   const h = harness.makeMatch({ ...options, fake: true, seed: 614, script: battle => battle.kind === 'normal'
     ? { leaks: { p_0: 3 }, duration: 0.1 } : battle.kind === 'unite'
       ? { survivors: { p_0: 1 }, duration: 0.1 } : { bossDps: 1e9, duration: 0.1 } });
+  // Explicit reference-model adjustment for the approved fork rule only. Production upstream files stay untouched.
+  // Selection and all downstream messages, field layouts, results and existing RNG states are still compared.
+  if (randomUnite && harness === upstream) {
+    const startUnite = h.m.startUnite;
+    h.m.startUnite = function (plan) {
+      const helpers = plan.helpers.slice();
+      const rng = createRng(deriveSeed(this.seed, 'unite-order:' + this.round));
+      for (let i = helpers.length - 1; i > 0; i--) {
+        const j = rng.int(i + 1);
+        [helpers[i], helpers[j]] = [helpers[j], helpers[i]];
+      }
+      return startUnite.call(this, { ...plan, helpers });
+    };
+  }
   const record = (channel, msg) => { if (!['b.snap', 'b.ev'].includes(msg.t)) trace.push(JSON.stringify([channel, msg])); };
   h.onSend.push((pid, msg) => record(pid, msg));
   h.onBroadcast.push(msg => record('*', msg));
@@ -65,7 +81,7 @@ for (const [i, options] of cases.entries()) {
     const index = Array.isArray(a[key]) ? a[key].findIndex((v, n) => JSON.stringify(v) !== JSON.stringify(b[key][n])) : null;
     diff.push({ key, index, upstream: index != null ? a[key][index] : a[key], fork: index != null ? b[key][index] : b[key] });
   }
-  const row = { case: i + 1, options, wireMessages: a.trace.length, identical: !diff.length, diff };
+  const row = { referenceRule: randomUnite ? 'random-unite-order' : 'unmodified-upstream', case: i + 1, options, wireMessages: a.trace.length, identical: !diff.length, diff };
   differences.push(row);
   console.log(JSON.stringify(row));
 }
