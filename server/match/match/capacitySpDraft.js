@@ -8,7 +8,6 @@ import { PHASE, ERR } from '../../../shared/constants.js';
 import { generateGroupDrafts, applyCard } from '../choices.js';
 import { onPickCard } from '../botEmotes.js';
 import { weightedPick } from '../waves.js';
-import { botPickCard } from '../bot.js';
 import { OK, fail, DELAYS } from './common.js';
 import { installDraftFacade } from './capacityPhases.js';
 
@@ -109,7 +108,11 @@ export class CapacityMatchSpDraft {
       if (!ps || !ps.botControlled) return;
       const avail = g.cards.filter((c) => this.spCardAvailable(c, g)).map((c) => c.idx);
       if (!avail.length) { this.startSpTurn(g); return; }
-      this._applyCard(ps, botPickCard(this, ps, g.cards, avail));
+      const fallback = () => this._applyCard(ps, this.bot.pickCard(this, ps, g.cards, avail));
+      if (this.bot.decide?.(this, ps, { kind: 'card',
+        valid: () => this.phase === PHASE.SP_DRAFT && this.sp === s && token === g.token,
+        complete: () => s.picks[ps.playerId] != null, fallback })) return;
+      fallback();
     });
   }
 

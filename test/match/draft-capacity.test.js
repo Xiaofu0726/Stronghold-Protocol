@@ -61,3 +61,29 @@ test('the 20-player draft has five independent six-card groups and rejects index
   assert.equal(m.sp.groups[0].taken[5], undefined);
   m.dispose();
 });
+
+
+for (const seats of [6, 20]) test(seats + ' seats inherit upstream AI strategy hooks for every draft group', t => {
+  const h = makeMatch({ humans: 0, bots: seats, fake: true });
+  t.after(() => h.m.dispose());
+  const m = h.m, bandCalls = [], cardCalls = [], decisions = [];
+  const base = m.bot;
+  m.bot = { ...base,
+    pickBand(match, ps) { bandCalls.push(ps.playerId); return base.pickBand(match, ps); },
+    pickCard(match, ps, cards, available) { cardCalls.push(ps.playerId); return base.pickCard(match, ps, cards, available); },
+    decide(match, ps, request) { decisions.push([ps.playerId, request.kind]); assert.equal(request.valid(), true); return false; },
+  };
+  m._rerollStartAt.set('old-picker', 123);
+  h.start().toPrep(3);
+  assert.equal(m._rerollStartAt.size, 0);
+  assert.equal(new Set(bandCalls).size, seats);
+  assert.equal(new Set(cardCalls).size, seats);
+  assert.ok(m.poolGroups.every(g => g.playerIds.every(pid => decisions.some(([id, kind]) => id === pid && kind === 'band')
+    && decisions.some(([id, kind]) => id === pid && kind === 'card'))));
+  m.version = 'act1autochess';
+  m.order[0].aiTakeoverRound = 2;
+  const view = m.publicView();
+  assert.equal(view.version, 'act1autochess');
+  assert.equal(view.players[0].aiTakeoverRound, 2);
+  h.invariants();
+});

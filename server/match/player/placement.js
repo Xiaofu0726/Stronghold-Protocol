@@ -182,6 +182,7 @@ export class PlayerPlacement {
       return OK;
     }
     // hand/temp → board
+    if (occ && this.gd.config.version?.rules?.benchFullSwap === false && freeSlot(this.hand) < 0) return fail(ERR.HAND_FULL);
     if (!occ || occ.kind !== 'chess') {
       if (this.deployCount >= this.deployCap) return fail(ERR.BOARD_FULL);
     }
@@ -309,6 +310,7 @@ export class PlayerPlacement {
         this.removeTokensOf(piece.uid);
         this.hand[idx] = piece;
       } else if (occ.kind === 'chess') {
+        if (this.gd.config.version?.rules?.benchFullSwap === false && freeSlot(this.hand) < 0) return fail(ERR.HAND_FULL);
         const [sr, sc] = parseKey(loc.key);
         if (!this._legal(occ, sr, sc)) return fail(ERR.BAD_TILE);
         // the bench card takes the withdrawn piece's tile with that tile's facing

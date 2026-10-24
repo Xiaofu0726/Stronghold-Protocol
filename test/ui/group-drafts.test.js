@@ -1,7 +1,7 @@
 // Public grouped-draft frames: independent turns/pages with one stable shared-pool identity.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeDraft, normalizeSp, poolGroups, playerPoolGroup, poolGroupIdentity, poolGroupSections } from '../../public/js/ui/gameLogic.js';
+import { heldDraftPub, normalizeDraft, normalizeSp, poolGroups, playerPoolGroup, poolGroupIdentity, poolGroupSections } from '../../public/js/ui/gameLogic.js';
 import { createPoolGroups } from '../../server/match/capacity/pools.js';
 
 const players = Array.from({ length: 9 }, (_, seat) => ({ playerId: `p${seat}`, seat, alive: true }));
@@ -241,4 +241,19 @@ describe('legacy draft compatibility', () => {
     assert.equal(sp.cards[0].id, 'b0');
     assert.deepEqual(sp.groups[1].playerIds, members(2));
   });
+});
+
+
+test('held grouped draft includes the final picks without retaining any active group clock', () => {
+  const last = { players: [{ playerId: 'a', bandId: null }, { playerId: 'b', bandId: null }], deadline: 99,
+    draft: { id: 'band:1', picks: { a: 'band_a' }, groups: [
+      { id: 1, order: ['a'], picks: { a: 'band_a' }, turn: null, turnDeadline: 0 },
+      { id: 2, order: ['b'], picks: {}, turn: 'b', turnDeadline: 99 },
+    ] } };
+  const before = structuredClone(last);
+  const held = heldDraftPub(last, { players: [{ playerId: 'a', bandId: 'band_a' }, { playerId: 'b', bandId: 'band_b' }] });
+  assert.equal(held.deadline, 0);
+  assert.deepEqual(held.draft.groups.map(g => g.picks), [{ a: 'band_a' }, { b: 'band_b' }]);
+  assert.ok(held.draft.groups.every(g => g.done && g.turn === null && g.turnDeadline === 0));
+  assert.deepEqual(last, before);
 });

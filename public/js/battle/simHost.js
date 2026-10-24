@@ -131,7 +131,18 @@ export class WorkerSimHost {
     this.meter = packet.meter;
     return packet;
   }
-  async start(spec, opts = {}) { this.spec = spec; this.accept(await this.rpc('start', opts.largeRoom ? [spec, { largeRoom: true }] : [spec])); return this; }
+  async start(spec, opts = {}) {
+    this.spec = spec;
+    // A reused worker still has the previous battle's events and stat RPCs. Drop them after `start` returns so a
+    // step that was already in flight cannot append onto the new battle, and ignore stat replies from the old one.
+    this.statsGeneration = (this.statsGeneration || 0) + 1;
+    this.statsPending.clear();
+    const packet = await this.rpc('start', opts.largeRoom ? [spec, { largeRoom: true }] : [spec]);
+    this.events.length = 0;
+    this.statsCache.clear();
+    this.accept(packet);
+    return this;
+  }
   async step(n, opts) { return this.accept(await this.rpc('step', [n, opts])); }
   progress() { return this.packet.progress; }
   uniteLeft() { return this.packet.left; }
@@ -139,7 +150,12 @@ export class WorkerSimHost {
   unitStats(id) {
     if (!this.stopped && !this.statsPending.has(id)) {
       this.statsPending.add(id);
-      this.rpc('unitStats', [id]).then(v => this.statsCache.set(id, v), () => {}).finally(() => this.statsPending.delete(id));
+      const generation = this.statsGeneration || 0;
+      this.rpc('unitStats', [id]).then(v => {
+        if (generation === (this.statsGeneration || 0)) this.statsCache.set(id, v);
+      }, () => {}).finally(() => {
+        if (generation === (this.statsGeneration || 0)) this.statsPending.delete(id);
+      });
     }
     return this.statsCache.get(id) || null;
   }

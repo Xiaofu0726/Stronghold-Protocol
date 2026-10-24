@@ -59,6 +59,7 @@ export class CapacityMatchViews {
       modeId: this.modeId,
       difficulty: this.difficulty,
       stageId: this.stageId,
+      ...(this.version ? { version: this.version } : {}),
       setupRevision: this.setupRevision,
       rerollVote: this.setupVote ? {
         id: this.setupVote.id,
@@ -87,6 +88,7 @@ export class CapacityMatchViews {
         seat: ps.seat,
         name: ps.name,
         isBot: ps.isBot,
+        ...(Number.isInteger(ps.aiTakeoverRound) ? { aiTakeoverRound: ps.aiTakeoverRound } : {}),
         connected: ps.isBot || (ps.connected && !ps.left),
         alive: ps.alive,
         lp: Math.max(0, ps.lp),

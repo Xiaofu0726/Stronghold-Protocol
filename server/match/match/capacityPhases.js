@@ -7,7 +7,6 @@
 
 import { PHASE, ERR } from '../../../shared/constants.js';
 
-import { botPickBand } from '../bot.js';
 import { OK, fail } from './common.js';
 
 /** Single-pool diagnostics and old fixtures keep their readable/writable first-group fields. */
@@ -89,6 +88,7 @@ export class CapacityMatchPhases {
   enterBandDraft() {
     if (this.phase !== PHASE.INFO_CHECK) return;
     this.phase = PHASE.BAND_DRAFT;
+    this._rerollStartAt.clear();
     const skips = this.isSolo ? 0 : this.gd.bandDraft.skipsPerPlayer;
     const untimed = this.soloUntimed;
     const groups = this.makeDraftGroups();
@@ -156,11 +156,17 @@ export class CapacityMatchPhases {
       if (this.phase !== PHASE.BAND_DRAFT || this.draft !== d || token !== g.token) return;
       const ps = this.players.get(g.order[g.idx]);
       if (!ps || !ps.botControlled) return;
-      // a strategy a teammate already took is not selectable (队友已选): the bot re-draws, else the first free one
-      let id = botPickBand(this, ps);
-      for (let k = 0; k < 8 && this.bandTaken(id, ps.playerId); k++) id = botPickBand(this, ps);
-      if (this.bandTaken(id, ps.playerId)) id = this.gd.bandIds().find((b) => !this.bandTaken(b, ps.playerId)) || id;
-      this._applyBand(ps, id, { dedupe: true });
+      const fallback = () => {
+        // a strategy a teammate already took is not selectable (队友已选): the bot re-draws, else the first free one
+        let id = this.bot.pickBand(this, ps);
+        for (let k = 0; k < 8 && this.bandTaken(id, ps.playerId); k++) id = this.bot.pickBand(this, ps);
+        if (this.bandTaken(id, ps.playerId)) id = this.gd.bandIds().find((b) => !this.bandTaken(b, ps.playerId)) || id;
+        this._applyBand(ps, id, { dedupe: true });
+      };
+      if (this.bot.decide?.(this, ps, { kind: 'band',
+        valid: () => this.phase === PHASE.BAND_DRAFT && this.draft === d && token === g.token,
+        complete: () => token !== g.token || !!d.picks[ps.playerId], fallback })) return;
+      fallback();
     });
   }
 

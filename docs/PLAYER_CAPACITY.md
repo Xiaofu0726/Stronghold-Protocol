@@ -1,6 +1,6 @@
 # 20 人房间扩展
 
-本分支 `feat/20-player-rooms` 基于 `sganggs/Stronghold-Protocol` 的 `master`，基线提交为
+本分支 `feat/20-player-rooms` 基于 `sganggs/Stronghold-Protocol` 的 `master`，初始基线提交为
 `c9d804f470b8d7422ae04eb66faf671cef21ad52`。扩容实现参考 LongQianChen 的
 `feat/IncreasePlayerCapacity`，不合入该分支的其他功能。
 
@@ -123,3 +123,8 @@ node tools/check-four-player-parity.mjs --upstream /path/to/clean-upstream-check
 低权重也可能排第一，高权重也可能排最后；这不是按权重排序，也不保证轮流。
 权重只保存于当前 Match，本局各回合累计，新对局重置；当前回合固定权重快照，候补队列不重抽。
 独立实现：`server/match/capacity/uniteFairness.js`；只在扩容方法安装器增加一个结算接线，避免改动上游结算文件。
+
+## 2026-10-25 上游同步
+
+当前已合入上游 0.3.2 master `5def29776fb3ab35f74d4589cddf883969175c59`。沿用上游新版大厅与房间：同盟方式弹窗选择席位，齿轮菜单内配置自动补 AI；只有大房间卡片使用扩容网格。
+分组轮选继承上游 AI 策略接口与重刷冷却清理，公共帧保留版本和 AI 接管履历字段。协防人数、波数、资格和结算规则保持此前分支约定。
