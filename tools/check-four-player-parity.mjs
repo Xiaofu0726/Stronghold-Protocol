@@ -25,17 +25,41 @@ function run(harness, options) {
     ? { leaks: { p_0: 3 }, duration: 0.1 } : battle.kind === 'unite'
       ? { survivors: { p_0: 1 }, duration: 0.1 } : { bossDps: 1e9, duration: 0.1 } });
   // Explicit reference-model adjustment for the approved fork rule only. Production upstream files stay untouched.
-  // Selection and all downstream messages, field layouts, results and existing RNG states are still compared.
+  // All candidate selection and downstream messages, field layouts, results and existing RNG states are still compared.
   if (randomUnite && harness === upstream) {
+    const records = new Map(), settled = new Set();
     const startUnite = h.m.startUnite;
     h.m.startUnite = function (plan) {
-      const helpers = plan.helpers.slice();
+      const pool = this.alivePlayers().filter(p => {
+        const r = this.lastResults.get(p.playerId);
+        return r && r.perfect !== false && !(r.leaked || []).some(l => l && l.counted !== false);
+      }).sort((a, b) => a.seat - b.seat || (a.playerId < b.playerId ? -1 : a.playerId > b.playerId ? 1 : 0));
       const rng = createRng(deriveSeed(this.seed, 'unite-order:' + this.round));
-      for (let i = helpers.length - 1; i > 0; i--) {
-        const j = rng.int(i + 1);
-        [helpers[i], helpers[j]] = [helpers[j], helpers[i]];
+      const helpers = [];
+      while (pool.length && helpers.length < this.gd.unite.maxHelpers) { // loop-cap: at most four eligible players
+        const weights = pool.map(p => {
+          const record = records.get(p.playerId);
+          return record ? 1 / ((2 ** record.entries) * (1 + record.frontLoad)) : 1;
+        });
+        let ticket = rng() * weights.reduce((sum, w) => sum + w, 0), index = weights.length - 1;
+        for (let i = 0; i < weights.length; i++) { ticket -= weights[i]; if (ticket < 0) { index = i; break; } }
+        helpers.push(pool.splice(index, 1)[0]);
       }
       return startUnite.call(this, { ...plan, helpers });
+    };
+    const settle = h.m.settle;
+    h.m.settle = function (plan, result) {
+      const actual = plan && result && !result.synthetic
+        ? plan.helpers.filter(p => Object.hasOwn(result.perPlayer || {}, p.playerId)) : [];
+      if (actual.length && !settled.has(this.round)) {
+        settled.add(this.round);
+        actual.forEach((p, index) => {
+          const before = records.get(p.playerId) || { entries: 0, frontLoad: 0 };
+          records.set(p.playerId, { entries: before.entries + 1,
+            frontLoad: before.frontLoad + 1 - index / actual.length });
+        });
+      }
+      return settle.call(this, plan, result);
     };
   }
   const record = (channel, msg) => { if (!['b.snap', 'b.ev'].includes(msg.t)) trace.push(JSON.stringify([channel, msg])); };
@@ -81,7 +105,7 @@ for (const [i, options] of cases.entries()) {
     const index = Array.isArray(a[key]) ? a[key].findIndex((v, n) => JSON.stringify(v) !== JSON.stringify(b[key][n])) : null;
     diff.push({ key, index, upstream: index != null ? a[key][index] : a[key], fork: index != null ? b[key][index] : b[key] });
   }
-  const row = { referenceRule: randomUnite ? 'random-unite-order' : 'unmodified-upstream', case: i + 1, options, wireMessages: a.trace.length, identical: !diff.length, diff };
+  const row = { referenceRule: randomUnite ? 'weighted-unite-order' : 'unmodified-upstream', case: i + 1, options, wireMessages: a.trace.length, identical: !diff.length, diff };
   differences.push(row);
   console.log(JSON.stringify(row));
 }

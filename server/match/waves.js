@@ -35,6 +35,7 @@
 // `lazerd` (else action 0); owner k starts 0.5·k s after the action, units step min(max(W/M, 0.05·W), 5 s) with M the
 // largest owner group (client `_CalculateActionPredelayConsiderUid`, decoded).
 
+import { applyGunEntryTiming } from './capacity/bossTiming.js';
 import { createRng, deriveSeed } from '../sim/rng.js';
 import { PLUGIN_ACTION_UNITS } from '../../shared/plugins/limits.js';
 
@@ -409,6 +410,7 @@ export function buildBossWave(gd, rng, factions, round, { bossId, solo }) {
   if (!tpl) return { templateId, spawns: [], routes: [], extraRoutes: [], timeLimit: Infinity, overrides: {}, pick: null, entries: { ground: null, fly: null }, actions: [] };
   const pick = roundPick(gd, rng, factions, round);
   const { spawns, actions } = templateSpawns(gd, tpl, round, pick);
+  applyGunEntryTiming(templateId, spawns, actions);
   return {
     templateId,
     spawns,

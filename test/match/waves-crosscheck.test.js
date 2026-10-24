@@ -111,7 +111,11 @@ test('independent official generator on the raw client data: every mode × round
             : buildNormalWave(gd, createRng(1), { picks }, round);
           assert.equal(w.templateId, templateId, `${modeId} R${r} ${entry.bossId ?? ''}`);
           const got = w.spawns.map((s) => `${s.actionIndex}:${s.enemyKey}x${s.count}@${s.time}/${(+s.interval).toFixed(6)}:${s.preview.gate}`).join(' ');
-          assert.equal(got, compose(lv, e, !!entry.bossId), `${modeId} R${r} ${templateId} ${e.specialEnemyKey}`);
+          // Explicit fork exception: only the multiplayer Hidden Core Gun enters early.
+          const expected = compose(lv, e, !!entry.bossId);
+          const forkExpected = templateId === 'act1autochess_h08_02'
+            ? expected.replace('enemy_9017_achunt_2x1@10/', 'enemy_9017_achunt_2x1@0.1/') : expected;
+          assert.equal(got, forkExpected, `${modeId} R${r} ${templateId} ${e.specialEnemyKey}`);
           n++;
           if (entry.bossId) leaderChecks++;
         }

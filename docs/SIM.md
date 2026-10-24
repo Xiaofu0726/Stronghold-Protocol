@@ -1716,3 +1716,17 @@ SDK-owned return records are immutable copies; live Battle/Unit callback objects
 ### Declarative operator traits (0.3.1, #671)
 
 The optional `public/js/battle/operatorTraits.js` loader adapter attaches operator-owned DSL after unit setup, using existing trigger/action helpers and the existing `damage.js` elementBurst event. Its fingerprint is pinned only in participating content sets; vanilla sim/shared bytes are unchanged. Server match hosts, studio trials and the browser loader install it; direct harness battles must call `installServerOperatorTraits(data)` from `server/plugins/operatorTraits.js` first and restore with vanilla data afterward. [ASSUMED] Layer caps are per holder/action/bond across redeploy, reset per battle. See [PLUGIN-DSL §10](PLUGIN-DSL.md#10-干员特质031671) for the fixed element vocabulary and filters.
+
+### 分支修正：隐秘核心铳提前入场
+
+多人隐秘核心模板 act1autochess_h08_02 中，铳从原始数据的10秒提前至0.1秒，与单人模板及双人镜像分支的时间一致。
+独立策略 server/match/capacity/bossTiming.js 同步调整生成项与动作时间，不修改生成数据、路线、属性或其他敌人。
+撤销此前的小车出场保护，恢复原有选中、受伤、护盾和伤害传递规则。铳的技能计时随提前出场一并提前。
+此为用户确认的分支规则，不能据此推断官方10秒配置的设计意图。
+
+### 分支修正：隐德来希三技能对 Boss 生效
+
+三技能生成心烛时不再排除 Boss，仍按技能范围内可选中的地面敌人当前生命值排序，最多选取原技能数量。
+心烛沿用当前生命值继承比例、防御/法抗继承、仅施术者可造成影响及原目标消失后清除的规则；
+对 Boss 的生命流失走已有共享血池和领袖单次限伤，不额外绕过限伤或对其他战场重复扣血。
+此为用户确认的分支修正；未扩大目标范围，也未改为持续补召。

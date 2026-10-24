@@ -102,7 +102,7 @@ test('combat limits and the boss overtime are REAL seconds (code) and the docs s
   assert.match(PLAYING, /120 秒倒计时结束后战斗\*\*继续\*\*/);
 });
 
-test('联防 helpers follow unite.helperOrder (units > active bond > standing > seat; LP plays no part) and the docs name it', () => {
+test('联防 helpers use the fork weighted lottery without LP/army ranking; the docs retain upstream references', () => {
   const player = (playerId, seat, lp, units, bond = false) => ({
     playerId, seat, lp, deployCount: units, board: new Map(), layers: {},
     bonds: bond ? { bond_x: { active: true, layers: 5 } } : {},
@@ -112,7 +112,9 @@ test('联防 helpers follow unite.helperOrder (units > active bond > standing > 
   const b = player('b', 1, 1, 5);           // most units
   const c = player('c', 2, 2, 5, true);     // most units + an active bond
   const order = helperOrder(m, [a, b, c], new Map()).map((p) => p.playerId);
-  assert.deepEqual(order.slice().sort(), ['b', 'c'], 'LP never decides selection; entry order is random in this fork');
+  assert.equal(order.length, 2);
+  assert.equal(new Set(order).size, 2);
+  assert.ok(order.every(pid => ['a', 'b', 'c'].includes(pid)), 'all perfect defenders are eligible');
   // the tie-break is the layers the 联防 will fight with: stored plus this round's pending gains, capped at 999
   const reached = (playerId, seat, stored, pending) => ({
     playerId, seat, lp: 10, deployCount: 4, board: new Map(),

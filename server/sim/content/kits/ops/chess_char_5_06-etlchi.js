@@ -67,7 +67,7 @@ export default {
         onStart({ battle, unit }) {
           unit.mem.candles = [];
           const picks = battle.enemiesInKeys(unit.rangeKeys, unit, { canHitFly: false })
-            .filter((e) => !e.isFlying && !e.mem?.candleOwner && !e.isBoss)
+            .filter((e) => !e.isFlying && !e.mem?.candleOwner)
             .sort((a, b) => b.hp - a.hp || a.spawnSeq - b.spawnSeq).slice(0, nCandles);
           for (const e of picks) {
             const r = Math.round(e.y), c = Math.round(e.x);

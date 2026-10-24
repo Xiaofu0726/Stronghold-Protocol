@@ -454,14 +454,15 @@ test('GEO sanity used by the fixes (boss rect, normal rect)', () => {
 
 test('the rule auditor follows the engine: PRTS 联防 helper order (not LP), silent solo presentation steps, a frozen item slot moved right by a level-up', () => {
   // co-op: the human (seat 0) plays nothing, the bots field full boards; only the last bot leaks → the helpers are the
-  // two perfect bots with the most units (unite.js helperOrder), whatever the LP / seat order says
+  // weighted perfect defenders (unite.js helperOrder), independent of army strength or LP
   const h = makeMatch({ mode: 'coop', difficulty: 'NORMAL', humans: 1, bots: 3, seed: 934, fake: true,
     script: (b) => (b.kind === 'boss' ? { bossDps: 5000 } : b.kind === 'normal' ? { leaks: Object.fromEntries(b.players.filter((p) => p === 'ai_2').map((p) => [p, 2])) } : {}) }).start();
   const m = h.m;
   const audit = attachAudit(m);
   for (const ps of m.players.values()) ps.lp = 200;
   h.drive(() => m.phase === PHASE.UNITE && m.round >= 4, { ready: true });
-  assert.ok(!m.unitePlan.helpers.some((p) => p.playerId === 'p_0'), `helpers ${m.unitePlan.helpers.map((p) => p.playerId)}: the empty board is never picked first`);
+  assert.equal(new Set(m.unitePlan.helpers.map(p => p.playerId)).size, 2);
+  assert.ok(m.unitePlan.helpers.every(p => p.playerId !== 'ai_2'), 'the leaker is ineligible; empty perfect boards may help');
   h.autoHumans();
   h.runToEnd({ maxSteps: 3e6 });
   assert.deepEqual(audit.violations, [], audit.violations.join('\n'));

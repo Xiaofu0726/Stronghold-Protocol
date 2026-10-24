@@ -347,3 +347,17 @@ DSL plugin budget and attribution. Vanilla registrations remain empty; no offici
 
 The same SDK and scriptGuard apply inside SES in sandbox mode (DESIGN §32.11); the evaluator consumes verified
 script descriptors. SDK-owned results are frozen copies; live Battle/Unit objects are not hardened.
+
+### 分支修正：隐秘核心铳提前入场
+
+多人隐秘核心模板 act1autochess_h08_02 中，铳从原始数据的10秒提前至0.1秒，与单人模板及双人镜像分支的时间一致。
+独立策略 server/match/capacity/bossTiming.js 同步调整生成项与动作时间，不修改生成数据、路线、属性或其他敌人。
+撤销此前的小车出场保护，恢复原有选中、受伤、护盾和伤害传递规则。铳的技能计时随提前出场一并提前。
+此为用户确认的分支规则，不能据此推断官方10秒配置的设计意图。
+
+### 分支修正：隐德来希三技能对 Boss 生效
+
+三技能生成心烛时不再排除 Boss，仍按技能范围内可选中的地面敌人当前生命值排序，最多选取原技能数量。
+心烛沿用当前生命值继承比例、防御/法抗继承、仅施术者可造成影响及原目标消失后清除的规则；
+对 Boss 的生命流失走已有共享血池和领袖单次限伤，不额外绕过限伤或对其他战场重复扣血。
+此为用户确认的分支修正；未扩大目标范围，也未改为持续补召。

@@ -1,11 +1,7 @@
 // Additional waves for rosters larger than four; base leak/bounty planning stays upstream.
-import { createRng, deriveSeed } from '../../sim/rng.js';
+import { weightedUniteOrder } from './uniteFairness.js';
 import { MAX_UNITE_HELPERS, uniteRoundLimit } from '../../../shared/playerCapacity.js';
-
-/** Shuffle selected helpers once per game round, independently of shop/wave/plugin RNG streams. */
-export function randomUniteOrder(m, helpers) {
-  return createRng(deriveSeed(m.seed, 'unite-order:' + m.round)).shuffle(helpers.slice());
-}
+export { weightedUniteOrder as randomUniteOrder } from './uniteFairness.js';
 
 export function capacityUnitePlan(m, plan) {
   const ordered = plan.helpers;
@@ -15,19 +11,10 @@ export function capacityUnitePlan(m, plan) {
     skipVotes: new Set(), skipRemaining: false };
 }
 
-export function capacityHelperOrder(m, perfects, results, helperStats) {
-  const st = new Map(perfects.map((ps) => [ps.playerId, helperStats(m, ps, results)]));
-  const S = (ps) => st.get(ps.playerId);
+export function capacityHelperOrder(m, perfects) {
   const perRound = Math.max(1, Math.min(2, Math.trunc(m.gd.unite.maxHelpers)));
   const limit = Math.min(MAX_UNITE_HELPERS, perRound * uniteRoundLimit(m.poolGroups?.length));
-  const selected = perfects.slice().sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active) || S(b).standing - S(a).standing || a.seat - b.seat)
-    .slice(0, limit);
-  const ordered = [];
-  for (let i = 0; i < selected.length; i += perRound) {
-    ordered.push(...selected.slice(i, i + perRound).sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active)
-      || S(b).layers - S(a).layers || S(b).standing - S(a).standing || a.seat - b.seat));
-  }
-  return randomUniteOrder(m, ordered);
+  return weightedUniteOrder(m, perfects).slice(0, limit);
 }
 
 /** Count the enemies the next wave would have to face when a wave could not run. */

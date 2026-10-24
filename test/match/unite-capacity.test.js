@@ -5,6 +5,7 @@ import { makeMatch } from './harness.js';
 import { FakeBattle } from './fakeBattle.js';
 import { validateC2S } from '../../shared/protocol.js';
 import { helperOrder, nextUnitePlan } from '../../server/match/unite.js';
+import { uniteFairnessRecords } from '../../server/match/capacity/uniteFairness.js';
 
 test('a unite progress frame reports every leaker in a twenty-player match', () => {
   const left = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`p_${i}`, i + 1]));
@@ -34,7 +35,9 @@ for (const clientCombat of [false, true]) {
     h.drive(() => m.phase === PHASE.UNITE && m.unitePlan.round === 1);
     const first = m.unitePlan.helpers.map((p) => p.playerId);
     const reserve = m.unitePlan.reserveHelpers.map((p) => p.playerId);
-    assert.deepEqual([...first, ...reserve].sort(), ['p_1', 'p_2', 'p_3', 'p_4']);
+    assert.equal([...first, ...reserve].length, 4);
+    assert.equal(new Set([...first, ...reserve]).size, 4);
+    assert.ok([...first, ...reserve].every(pid => pid !== 'p_0' && m.players.has(pid)));
     assert.deepEqual([m.publicView().unite.round, m.publicView().unite.roundsMax], [1, 2]);
     h.drive(() => m.phase === PHASE.UNITE && m.unitePlan.round === 2);
     const second = m.unitePlan.helpers.map((p) => p.playerId);
@@ -44,6 +47,7 @@ for (const clientCombat of [false, true]) {
     assert.deepEqual([m.publicView().unite.round, m.publicView().unite.roundsMax], [2, 2]);
     h.drive(() => m.phase === PHASE.SETTLE);
     assert.equal(new Set(FakeBattle.instances.filter((b) => b.kind === 'unite').map((b) => b.opts.seed)).size, 2);
+    assert.deepEqual([...uniteFairnessRecords(m).keys()], [...first, ...second], 'all actual waves enter the same fairness history');
     assert.equal(h.ps('p_0').lp, 29, 'only the final survivor costs the original leaker LP');
     assert.equal(h.ps(first[0]).pendingFunds, 5, 'first-wave bounty credits survive second-wave settlement');
     assert.equal(h.ps(second[0]).pendingFunds, 7);
@@ -103,7 +107,8 @@ for (const humans of [1, 2, 3, 4, 8, 20]) {
     const ids = players => players.map(p => p.playerId);
     const first = ids(helperOrder(m, candidates, new Map()));
     const limit = humans > 4 ? Math.min(10, 2 * m.poolGroups.length) : 2;
-    assert.deepEqual(first.slice().sort(), ids(candidates.slice(0, limit)).sort());
+    assert.equal(first.length, Math.min(limit, candidates.length));
+    assert.ok(first.every(pid => candidates.some(p => p.playerId === pid)));
     assert.deepEqual(ids(helperOrder(m, candidates.slice().reverse(), new Map())), first);
     const streamStates = () => ['rngSetup', 'rngShop', 'rngWaves', 'rngDraft', 'rngBots', 'rngMeta'].map(k => m[k].state());
     const before = streamStates();
@@ -112,7 +117,9 @@ for (const humans of [1, 2, 3, 4, 8, 20]) {
       m.seed = seed;
       const order = ids(helperOrder(m, candidates, new Map()));
       assert.deepEqual(ids(helperOrder(m, candidates, new Map())), order);
-      assert.deepEqual(order.slice().sort(), first.slice().sort());
+      assert.equal(order.length, first.length);
+      assert.equal(new Set(order).size, order.length);
+      assert.ok(order.every(pid => candidates.some(p => p.playerId === pid)));
       orders.add(order.join(','));
     }
     assert.deepEqual(streamStates(), before, 'ordering consumes no existing random stream');

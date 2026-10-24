@@ -90,7 +90,7 @@ export function verify(cwd, { allowedPaths, runChecks = runValidation } = {}) {
 function node(cwd, args) { execFileSync(process.execPath, args, { cwd, stdio: 'inherit' }); }
 function runValidation(cwd, master) {
   node(cwd, ['--test', 'test/lobby-capacity.test.js', 'test/lobby.test.js', 'test/lobby-kick.test.js',
-    'test/match/*-capacity.test.js', 'test/match/four-player-compat.test.js', 'test/match/capacity-result.test.js',
+    'test/match/*-capacity.test.js', 'test/match/unite-fairness.test.js', 'test/match/gun-entry-timing.test.js', 'test/match/four-player-compat.test.js', 'test/match/capacity-result.test.js',
     'test/ui/*.test.js', 'test/docs-consistency.test.js', 'test/docs-paths.test.js', 'test/sync-upstream.test.js']);
   node(cwd, ['tools/golden.mjs', '--jobs', '2']);
   node(cwd, ['tools/ci.mjs', '--only', 'lint,imports,typecheck']);

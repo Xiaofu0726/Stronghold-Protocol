@@ -1,3 +1,4 @@
+import { installUniteFairness } from './uniteFairness.js';
 import { CapacityMatchSettle } from '../match/capacitySettle.js';
 import { CapacityMatchUnite } from '../match/capacityUnite.js';
 import { CapacityMatchPlatform } from '../match/capacityPlatform.js';
@@ -19,4 +20,5 @@ export function installCapacityMatch(Match) {
       } });
     }
   }
+  installUniteFairness(Match);
 }

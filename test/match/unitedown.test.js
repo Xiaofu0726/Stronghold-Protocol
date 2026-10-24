@@ -89,7 +89,7 @@ for (const clientCombat of [true, false]) {
     }
     const board1 = [...h.ps('p_1').board.entries()].find(([, p]) => p.uid === down1.uid)[0].split(',').map(Number);
     const u1 = unitOf(down1.uid, 'p_1');
-    assert.deepEqual([u1.tileR, u1.tileC], [board1[0], board1[1] + 8], 'the first helper holds the right-hand half (colOffset +8), on its board tile');
+    assert.deepEqual([u1.tileR, u1.tileC], [board1[0], board1[1] + (m.unitePlan.helpers[0].playerId === 'p_1' ? 8 : 0)], 'the first helper holds the right-hand half (colOffset +8), on its board tile');
     assert.ok([unitOf(up1.uid, 'p_1'), unitOf(up2.uid, 'p_2')].every((u) => u.alive && u.deployed), 'the standing operators fight');
 
     // redeploy: after the timer, on its own tile, at full HP (DP init 10 + 1/s ≥ cost by then)

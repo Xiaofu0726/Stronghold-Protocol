@@ -115,17 +115,10 @@ export function helperStats(m, ps, results) {
   return { units, active, layers, standing };
 }
 
-/**
- * The ≤ maxHelpers helpers, first = the one that meets the enemies first (right-hand field): selection by units >
- * active bond > standing units > seat, then random entry order (fork rule, for all room sizes).
- */
-export function helperOrder(m, perfects, results) {
-  if ((m.order?.length ?? m.alivePlayers?.()?.length ?? 4) > 4) return capacityHelperOrder(m, perfects, results, helperStats);
-  const st = new Map(perfects.map((ps) => [ps.playerId, helperStats(m, ps, results)]));
-  const S = (ps) => st.get(ps.playerId);
-  const select = perfects.slice().sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active) || S(b).standing - S(a).standing || a.seat - b.seat)
-    .slice(0, m.gd.unite.maxHelpers);
-  return randomUniteOrder(m, select.sort((a, b) => S(b).units - S(a).units || (S(b).active - S(a).active) || S(b).layers - S(a).layers || S(b).standing - S(a).standing || a.seat - b.seat));
+/** All perfect defenders join a match-local weighted lottery; existing helper/round limits still apply. */
+export function helperOrder(m, perfects) {
+  if ((m.order?.length ?? m.alivePlayers?.()?.length ?? 4) > 4) return capacityHelperOrder(m, perfects);
+  return randomUniteOrder(m, perfects).slice(0, m.gd.unite.maxHelpers);
 }
 
 /** Battle options for the unite field (without data/logger, added by the match). */
