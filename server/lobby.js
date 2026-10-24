@@ -162,6 +162,7 @@
 //     a player seat (the seat is kept and given back on resume).
 
 import { randomBytes, randomInt } from 'node:crypto';
+import { setAutoFillAi, fillRoomAi } from './lobbyAutoFill.js';
 import { DIFFICULTIES, ERR, DEFAULT_SEATS, ROOM_CAPACITIES, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor } from '../shared/constants.js';
 import { checkLoadout, checkLoadoutOps, cultivationCharIds, checkNotOwned, checkDiyPicks, charPotentialChanges, checkSkinSelection, operatorCharIds } from '../shared/protocol.js';
 import { encode, isDroppable, isErrCode, sendRaw, sendSession } from './net.js';
@@ -274,6 +275,7 @@ export class Room {
      * put every human seat before every AI seat (Match opts.aiPicksLast). Kept across the room's matches.
      */
     this.aiPicksLast = false;
+    this.autoFillAi = false;
     /** @type {string | null} */
     this.hostId = null;
     /** @type {(Seat | null)[]} */
@@ -345,6 +347,7 @@ export class Room {
       difficulty: this.difficulty,
       capacity: this.capacity,
       aiPicksLast: this.aiPicksLast,
+      autoFillAi: this.autoFillAi,
       inMatch: !!this.match,
       seats: this.seats.map((s) => (s
         ? { seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left,
@@ -643,6 +646,7 @@ export class Lobby {
       case 'room.ready': return this.ready(session, msg);
       case 'room.setCapacity': return this.setCapacity(session, msg);
       case 'room.setDifficulty': return this.setDifficulty(session, msg);
+      case 'room.setAutoFillAi': return setAutoFillAi(this, session, msg);
       case 'room.setAiPicksLast': return this.setAiPicksLast(session, msg);
       case 'room.addBot': return this.addBot(session);
       case 'room.removeBot': return this.removeBot(session, msg);
@@ -1373,6 +1377,8 @@ setCapacity(session, { capacity }) {
   /** @param {Room} room @param {string | null} [key] per-network limit key of the starter */
   startMatch(room, key = null) {
     if (room.test && !this.testEnabled) return fail(ERR.TEST_DISABLED);
+    const filled = fillRoomAi(this, room);
+    if (filled.error) return filled;
     const host = room.seatOf(room.hostId);
     if (host) host.ready = true;
     // the room's data: its content set's in a room with gameplay plugins (header "Gameplay plugins")

@@ -1087,3 +1087,8 @@ reconnectable, spectator-readable snapshot. Bots resolve immediately. Sources, b
 所有人数房间先按原规则选人，再以独立的对局种子/回合号随机打乱协防队列；大房间后续援助依次取用。
 可用 `tools/check-four-player-parity.mjs --upstream <upstream-checkout>` 对照消息、事件、随机流和库存，
 协防随机顺序是预期差异；加 `--random-unite-order` 可在上游对照实例应用同样规则后检查其他行为。
+
+合作房间可由房主启用“自动用 AI 填满房间”（默认关闭），入口位于“AI 队友最后选择”下方。
+仅在开始模拟、通过原有准备和插件内容检查后，复用手动添加 AI 的流程补齐空位至房间容量；
+等待期间不占位，不替换真人、已有 AI 或观战者。选项随房间保留，切换后其他真人需重新准备；
+单人模式不显示且服务端拒绝此设置。独立实现：`server/lobbyAutoFill.js`、`public/js/ui/capacity/autoFillAi.js`。
