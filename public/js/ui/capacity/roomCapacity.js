@@ -3,7 +3,7 @@ import { html, Icon } from '../components.js';
 import { ROOM_CAPACITIES } from '../../../../shared/constants.js';
 import { t } from '../../../../shared/i18n.js';
 
-/** In-game capacity menu opens above the compact create row. */
+/** In-game capacity menu opens below the alliance capacity selector. */
 export function CapacitySelect({ value, onChange }) {
   const [open, setOpen] = useState(false);
   const root = useRef(null);

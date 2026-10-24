@@ -42,7 +42,7 @@ import { AiTakeoverPanel } from '../ui/aiTakeover.js';
 // gameLogic prepCameraFor / foldCamera — never over the pen, a teammate's board or a battle; deferred while a piece is
 // dragged or its direction is chosen). A deploy is the other way round (GitHub #602, PR #646 by @Euqorab): picking up a
 // piece on the own prep board, and a legal drop's direction wheel, fold the shop bar for as long as they last and zoom
-// to that framing at once (gameLogic deployFoldsShop) while 设置「部署时收起商店」 is on (the default). Off, the pickup
+// to that framing at once (gameLogic deployFoldsShop) while 设置「部署时收起商店」 is on (off by default in this fork). Off, the pickup
 // changes neither the shop's fold nor the camera. Turning it off mid-drag gives both back on that frame
 // (gameLogic deployZoomStep / prepDeployCamera). Opening 敌方情报 while the piece is still held does not spend
 // that frame: the zoom stays owed until the pen closes (deployZoomRemember). [ASSUMED] The player's own fold
@@ -514,7 +514,7 @@ function MatchScreen() {
   // direction wheel a legal drop opens — the official client folds the shop and zooms to the shop-collapsed prep
   // camera (the same framing as 收起, left_prepare_camera_param), then gives the player's own shop state back. It is
   // derived from the interaction state only: `collapsed` (the 收起/展开 state) is never set by it.
-  // 设置「部署时收起商店」 (default on). Off: a pickup changes neither the shop fold nor the camera.
+  // 设置「部署时收起商店」 (default off in this fork). Off: a pickup changes neither the shop fold nor the camera.
   // Only an explicit false disables it. [ASSUMED] the label 「部署时收起商店」.
   const deployFold = deployFoldsShop({
     ownPrep: !!view && viewModeRef.current === 'prep' && showPrep, editable, pen, drag: !!drag, facing: !!facing,

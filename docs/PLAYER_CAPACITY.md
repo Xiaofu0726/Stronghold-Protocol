@@ -49,7 +49,7 @@
 
 | 扩展 | 独立文件 | 上游接入点 |
 | --- | --- | --- |
-| 席位上拉菜单 | `public/js/ui/capacity/roomCapacity.js` | `screens/lobby.js` 管理容量状态并传给 `room.create` |
+| 席位下拉菜单 | `public/js/ui/capacity/roomCapacity.js` | `screens/lobby.js` 管理容量状态并传给 `room.create` |
 | 分组机变页面 | `public/js/ui/capacity/choiceOverlay.js` | `ui/choiceOverlay.js` 保留上游小房间组件；把现有卡牌工具传给扩容组件 |
 | 扩容布局与关闭按钮修正 | `public/css/player-capacity.css` | `public/index.html` 增加一个样式引用；六个原页面样式文件与 master 一致 |
 | 大房间方法分派 | `server/match/capacity/install.js` | `Match.js` 在上游方法安装完毕后调用一次 |
