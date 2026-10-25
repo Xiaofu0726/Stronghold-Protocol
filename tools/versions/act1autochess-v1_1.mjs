@@ -34,7 +34,8 @@ export default Object.freeze({
   pools: Object.freeze({ pool_chess_glady: Object.freeze(['char_263_skadi', 'char_143_ghost', 'char_218_cuttle']) }),
   config: Object.freeze({
     hiddenCore: Object.freeze({ single: 300, multi: 1000 }),
-    rules: Object.freeze({ deployOrder: 'rowBottomUp', soloTimed: true, benchEquip: false, benchFullSwap: false, bossMirrorShare: false }),
+    // Round53 authorizes full-bench swaps in every version; first-period client fidelity is unmeasured [ASSUMED], §36.2.
+    rules: Object.freeze({ deployOrder: 'rowBottomUp', soloTimed: true, benchEquip: false, bossMirrorShare: false }),
   }),
   expect: Object.freeze({ bonds: 18, bands: 20, visibleNonDiy: 95, triggerDeviations: 'none' }),
 });

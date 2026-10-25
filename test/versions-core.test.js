@@ -7,6 +7,8 @@ import { createRegistry } from '../server/match/effectsMeta.js';
 import { makeBattle, chessRec, enemyRec } from './helpers/battleHarness.js';
 import { makeMatch, give, giveItem, legalTileFor } from './match/harness.js';
 import { buildBattleSpec, createBattleFromSpec } from '../server/sim/spec.js';
+import { withFirstPeriodPrepInteractions } from '../server/match/capacity/prepInteractions.js';
+import { placementContext, dropIntent } from '../public/js/ui/gameLogic/placement.js';
 
 const current = getData();
 const ids = ['act1autochess@V1_1', 'act1autochess', 'act2autochess@V2_1'];
@@ -82,23 +84,6 @@ for (const id of ids.slice(0, 2)) {
     coop.m.dispose();
   }));
 
-  test(`${id}: bench equipment and full bench swaps fail without moving pieces`, () => inVersion(id, (data) => {
-    const h = makeMatch({ data, registry: createRegistry(), fake: true }).start().toPrep();
-    const ps = h.ps('p_0');
-    const opId = h.m.gd.visibleChess[0];
-    const itemId = Object.keys(data.items).find((k) => data.items[k].effectId === 'eff_acarm055');
-    const held = give(h.m, ps, opId);
-    const item = giveItem(h.m, ps, itemId);
-    assert.ok(ps.equip(item.uid, held.uid).error);
-    const at = legalTileFor(h.m, ps, opId);
-    const board = give(h.m, ps, opId, 'board', at);
-    for (let i = 0; i < ps.hand.length; i++) if (!ps.hand[i]) ps.hand[i] = ps.newPiece('chess', opId);
-    const idx = ps.hand.indexOf(held);
-    assert.equal(ps.move(board.uid, { area: 'hand', idx }).error, 'HAND_FULL');
-    assert.equal(ps.move(held.uid, { area: 'board', row: at[0], col: at[1] }).error, 'HAND_FULL');
-    assert.equal(ps.find(board.uid).area, 'board');
-    h.m.dispose();
-  }));
 
   test(`${id}: 精准, 灵巧, 突袭 milestones and 协防 scope follow old blackboards`, () => inVersion(id, (data) => {
     const h = battle(data, { bonds: { preciShip: bond(2), skillfulShip: bond(1), raidShip: bond(1, 30), emptyShip: bond(1) } });
@@ -249,3 +234,84 @@ test('historical battle traits grant front skills, heal on freeze and never emit
   assert.equal(hits, 0);
   h.invariants();
 }));
+
+// Full-bench swaps now come from upstream 0.3.3; the fork only overrides bench equipment.
+test('first-period prep policy changes only bench equipment, without mutating historical data', () => {
+  for (const id of ['act1autochess', 'act1autochess@V1_1']) {
+    const original = getVersionData(id).config;
+    const result = withFirstPeriodPrepInteractions(original);
+    assert.deepEqual(result, { ...original, version: { ...original.version,
+      rules: { ...original.version.rules, benchEquip: true } } });
+    assert.equal(original.version.rules.benchEquip, false);
+    assert.equal(Object.hasOwn(original.version.rules, 'benchFullSwap'), false);
+  }
+  for (const config of [current.config, getVersionData('act2autochess@V2_1').config,
+    { version: { id: 'custom', rules: { benchEquip: false, benchFullSwap: false } } }]) {
+    assert.equal(withFirstPeriodPrepInteractions(config), config);
+  }
+});
+
+for (const id of ['act1autochess@V1_1', 'act1autochess', 'act2autochess@V2_1', 'act2autochess']) {
+  test(id + ': full bench swaps work in both directions through browser intents', () => inVersion(id, (data) => {
+    const h = makeMatch({ data, registry: createRegistry(), fake: true }).start().toPrep();
+    try {
+      const ps = h.ps('p_0');
+      const opId = h.m.gd.visibleChess[0];
+      const held = give(h.m, ps, opId);
+      const at = legalTileFor(h.m, ps, opId);
+      const board = give(h.m, ps, opId, 'board', at);
+      for (let i = 0; i < ps.hand.length; i++) if (!ps.hand[i]) ps.hand[i] = ps.newPiece('chess', opId);
+      const ctx = () => placementContext({ priv: ps.privateView(), stage: h.m.stage,
+        editable: true, getChess: (key) => ps.gd.chess(key), getItem: (key) => ps.gd.item(key) });
+      const idx = ps.hand.indexOf(held);
+      const before = [...ps.hand, ...ps.board.values()].map(p => p.uid).sort((a, b) => a - b);
+      ps.deployCapBonus = 1 - ps.gd.deployCap; // swap at the deploy limit too
+      const count = ps.deployCount;
+      let intent = dropIntent(ctx(), held.uid, { area: 'board', row: at[0], col: at[1] });
+      assert.equal(intent?.t, 'g.move');
+      assert.deepEqual(ps.move(intent.fields.uid, intent.fields.to), { ok: true });
+      assert.equal(ps.board.get(at.join(',')), held);
+      assert.equal(ps.hand[idx], board);
+      intent = dropIntent(ctx(), held.uid, { area: 'hand', idx });
+      assert.equal(intent?.t, 'g.move');
+      assert.deepEqual(ps.move(intent.fields.uid, intent.fields.to), { ok: true });
+      assert.equal(ps.board.get(at.join(',')), board);
+      assert.equal(ps.hand[idx], held);
+      assert.equal(ps.deployCount, count);
+      assert.ok(ps.hand.every(Boolean));
+      assert.deepEqual([...ps.hand, ...ps.board.values()].map(p => p.uid).sort((a, b) => a - b), before);
+      const empty = legalTileFor(h.m, ps, opId, new Set([at.join(',')]));
+      assert.equal(ps.move(held.uid, { area: 'board', row: empty[0], col: empty[1] }).error, 'BOARD_FULL');
+      assert.equal(ps.move(held.uid, { area: 'board', row: -1, col: 0 }).error, 'BAD_TILE');
+      // An ordinary withdrawal still requires a free slot; ready still locks editing.
+      ps.hand[idx] = ps.newPiece('item', Object.keys(data.items)[0]);
+      assert.equal(ps.move(board.uid, { area: 'hand', idx }).error, 'HAND_FULL');
+      ps.ready = true;
+      assert.ok(ps.move(board.uid, { area: 'hand', idx }).error);
+    } finally { h.m.dispose(); }
+  }));
+
+  for (const area of ['hand', 'temp']) test(id + ': browser equips bench operators from ' + area, () => inVersion(id, (data) => {
+    const h = makeMatch({ data, registry: createRegistry(), fake: true }).start().toPrep();
+    try {
+      const ps = h.ps('p_0');
+      const held = give(h.m, ps, h.m.gd.visibleChess[0]);
+      const itemId = Object.keys(data.items).find(k => data.items[k].effectId === 'eff_acarm055');
+      {
+        const item = giveItem(h.m, ps, itemId, area);
+        const ctx = placementContext({ priv: ps.privateView(), stage: h.m.stage, editable: true,
+          getChess: key => ps.gd.chess(key), getItem: key => ps.gd.item(key) });
+        const intent = dropIntent(ctx, item.uid, { area: 'hand', idx: ps.hand.indexOf(held) });
+        assert.equal(intent?.t, 'g.equip');
+        assert.deepEqual(ps.equip(intent.fields.itemUid, intent.fields.targetUid), { ok: true });
+        assert.equal(ps.find(held.uid).area, 'hand');
+        assert.ok(held.items.some(it => it.uid === item.uid));
+        assert.equal(ps.find(item.uid).area, 'equipped');
+      }
+      const item = giveItem(h.m, ps, itemId);
+      ps.ready = true;
+      assert.ok(ps.equip(item.uid, held.uid).error);
+      assert.equal(ps.find(item.uid).area, 'hand');
+    } finally { h.m.dispose(); }
+  }));
+}

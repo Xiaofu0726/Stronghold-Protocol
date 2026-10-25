@@ -115,6 +115,9 @@
     "test/ui/playtest4.test.js",
     "tools/check-four-player-parity.mjs",
     "tools/sync-upstream.mjs",
-    "tools/upstream-sync-scope.json"
+    "tools/upstream-sync-scope.json",
+    "server/match/capacity/prepInteractions.js",
+    "test/versions-core.test.js",
+    "docs/history/0.3.3.md"
   ]
 }

@@ -1,4 +1,5 @@
-// Match-local weighted Unite lottery. Fewer entries and less front exposure improve odds, never guarantee a position.
+// Match-local weighted Unite lottery: humans precede AI seats; weights decide order within each group.
+// Fewer entries and less front exposure improve odds, never guarantee a position within that group.
 import { createRng, deriveSeed } from '../../sim/rng.js';
 
 const states = new WeakMap();
@@ -36,7 +37,9 @@ export function weightedUniteOrder(m, helpers) {
     ordered.push(chosen);
     pool.splice(pool.indexOf(chosen), 1);
   }
-  return ordered;
+  // Stable partition before helper limits are applied: eligible humans always get the earlier slots.
+  // Preserve the lottery and RNG consumption, including all-human and all-AI rooms.
+  return [...ordered.filter(p => !p.isBot), ...ordered.filter(p => p.isBot)];
 }
 
 /** Settle once, based on actual non-synthetic waves, not on unused queue positions. */

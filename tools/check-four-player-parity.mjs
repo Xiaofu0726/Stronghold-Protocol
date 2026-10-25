@@ -36,7 +36,7 @@ function run(harness, options) {
       }).sort((a, b) => a.seat - b.seat || (a.playerId < b.playerId ? -1 : a.playerId > b.playerId ? 1 : 0));
       const rng = createRng(deriveSeed(this.seed, 'unite-order:' + this.round));
       const helpers = [];
-      while (pool.length && helpers.length < this.gd.unite.maxHelpers) { // loop-cap: at most four eligible players
+      while (pool.length) { // loop-cap: at most four eligible players
         const weights = pool.map(p => {
           const record = records.get(p.playerId);
           return record ? 1 / ((2 ** record.entries) * (1 + record.frontLoad)) : 1;
@@ -45,7 +45,8 @@ function run(harness, options) {
         for (let i = 0; i < weights.length; i++) { ticket -= weights[i]; if (ticket < 0) { index = i; break; } }
         helpers.push(pool.splice(index, 1)[0]);
       }
-      return startUnite.call(this, { ...plan, helpers });
+      const prioritized = [...helpers.filter(p => !p.isBot), ...helpers.filter(p => p.isBot)];
+      return startUnite.call(this, { ...plan, helpers: prioritized.slice(0, this.gd.unite.maxHelpers) });
     };
     const settle = h.m.settle;
     h.m.settle = function (plan, result) {
@@ -105,7 +106,7 @@ for (const [i, options] of cases.entries()) {
     const index = Array.isArray(a[key]) ? a[key].findIndex((v, n) => JSON.stringify(v) !== JSON.stringify(b[key][n])) : null;
     diff.push({ key, index, upstream: index != null ? a[key][index] : a[key], fork: index != null ? b[key][index] : b[key] });
   }
-  const row = { referenceRule: randomUnite ? 'weighted-unite-order' : 'unmodified-upstream', case: i + 1, options, wireMessages: a.trace.length, identical: !diff.length, diff };
+  const row = { referenceRule: randomUnite ? 'weighted-human-first-unite-order' : 'unmodified-upstream', case: i + 1, options, wireMessages: a.trace.length, identical: !diff.length, diff };
   differences.push(row);
   console.log(JSON.stringify(row));
 }

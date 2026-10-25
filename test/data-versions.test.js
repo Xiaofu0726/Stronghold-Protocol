@@ -131,6 +131,35 @@ test('profiles: the default is today\'s build; pins pick a commit per file group
 // ---------------------------------------------------------------------------------------------------
 
 for (const v of OTHERS) {
+  test(`data/${v.dir}: mode and shop fields come from this version's pinned activity table`, async (t) => {
+    const { profile } = await loadProfile(v.id);
+    const sha = pinnedShaOf(profile, 'excel/activity_table.json');
+    const source = join(ROOT, '.cache', `gamedata@${sha}`, 'excel', 'activity_table.json');
+    if (!existsSync(source)) { t.skip(`no ${source}`); return; }
+    const raw = JSON.parse(readFileSync(source, 'utf8'));
+    const act = raw.activity.AUTOCHESS_SEASON[profile.season];
+    const config = readJson(join(ROOT, 'data', v.dir), 'config');
+    for (const [id, mode] of Object.entries(config.modes)) {
+      const official = act.modeDataDict[id];
+      for (const [field, input] of Object.entries({ name: 'name', code: 'code', sortId: 'sortId', type: 'modeType',
+        difficulty: 'modeDifficulty', desc: 'desc', effectDescList: 'effectDescList', specialPhaseTime: 'specialPhaseTime',
+        activeBondIds: 'activeBondIdList', inactiveBondIds: 'inactiveBondIdList', inactiveEnemyKeys: 'inactiveEnemyKey' })) {
+        assert.deepEqual(mode[field], official[input], `${id}.${field}`);
+      }
+      const levels = Object.values(act.shopLevelDataDict[id]);
+      assert.deepEqual(mode.shopSlots, Object.fromEntries(levels.map(l => [l.shopLevel, { chess: l.charChessCount, item: l.itemCount }])), id);
+      assert.deepEqual(mode.upgradePrices, levels.slice(0, -1).map(l => l.initialUpgradePrice), id);
+      assert.deepEqual(mode.levelTagColors, Object.fromEntries(levels.map(l => [l.shopLevel, l.levelTagBgColor])), id);
+      assert.equal(mode.maxShopLevel, Math.max(...levels.map(l => l.shopLevel)), id);
+      for (const [round, built] of Object.entries(mode.rounds)) {
+        const turn = raw.autoChessData.turnInfoDataDict[id][round];
+        assert.equal(built.prepTimeData, turn.normalPhaseTime, `${id} R${round}`);
+        assert.equal(built.prepTime, mode.type !== 'SINGLE' || profile.config.rules?.soloTimed ? turn.normalPhaseTime : null, `${id} R${round}`);
+        assert.equal(built.isSpPrepare, act.battleDataDict[id][round].some(b => b.isSpPrepare), `${id} R${round}`);
+      }
+    }
+  });
+
   test(`data/${v.dir}: the 16 files, under 6 MB, config.version, the profile's counts, no effectRef, the trigger deviations of its profile, references resolve`, async () => {
     const { profile } = await loadProfile(v.id);
     const dir = join(ROOT, 'data', v.dir);

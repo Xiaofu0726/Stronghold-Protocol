@@ -115,10 +115,11 @@ test('all perfect defenders are candidates irrespective of army strength; leaker
 
 // Fairness changes identities/order only; keep all existing capacity boundaries.
 test('1–20 seats retain helper and wave limits for every eligible count', () => {
-  for (let seats = 1; seats <= 20; seats++) for (const configured of [1, 2, 3]) {
+  for (let seats = 1; seats <= 20; seats++) for (const configured of [1, 2, 3]) for (const bots of ['none', 'all', 'alternate']) {
     const groups = seats <= 5 ? 1 : seats <= 9 ? 2 : seats <= 13 ? 3 : seats <= 17 ? 4 : 5;
     for (let eligible = 0; eligible < seats; eligible++) {
       const m = { ...match(seats), gd: { unite: { maxHelpers: configured } }, poolGroups: Array(groups) };
+      for (const p of m.order) p.isBot = bots === 'all' || (bots === 'alternate' && p.seat % 2 === 0);
       const candidates = m.order.slice(0, eligible), original = candidates.slice();
       const perWave = seats <= 4 ? configured : Math.min(2, configured);
       const limit = seats <= 4 ? configured : Math.min(10, perWave * groups);
@@ -127,6 +128,9 @@ test('1–20 seats retain helper and wave limits for every eligible count', () =
       assert.equal(new Set(ordered).size, ordered.length);
       assert.ok(ordered.every(p => candidates.includes(p)));
       assert.deepEqual(candidates, original);
+      assert.equal(ordered.filter(p => !p.isBot).length, Math.min(candidates.filter(p => !p.isBot).length, limit));
+      const firstBot = ordered.findIndex(p => p.isBot);
+      if (firstBot >= 0) assert.ok(ordered.slice(firstBot).every(p => p.isBot));
       if (seats > 4 && ordered.length) {
         const plan = capacityUnitePlan(m, { helpers: ordered });
         assert.equal(plan.helpers.length, Math.min(perWave, eligible));
@@ -182,3 +186,57 @@ test('fairness settlement forwards original receiver, arguments and result witho
   assert.equal(seen.args.length, 3);
   assert.deepEqual({ plan, wave, order: m.order, extra }, before);
 });
+
+
+test('human priority is absolute even when an AI has a higher fairness weight; group lottery order stays intact', () => {
+  const m = match(6);
+  m.order.forEach(p => { p.isBot = p.seat % 2 === 0; });
+  // Penalize two humans and one AI; untouched AI still cannot overtake any human.
+  const entered = [m.order[1], m.order[2], m.order[3]];
+  recordUniteFairness(m, { helpers: entered }, result(entered));
+  m.round++;
+  assert.ok(uniteFairnessWeights(m).get('p_0') > uniteFairnessWeights(m).get('p_1'));
+  const leaders = new Map([[false, new Set()], [true, new Set()]]);
+  for (let seed = 1; seed <= 1000; seed++) {
+    m.seed = seed;
+    const before = structuredClone(m.order);
+    const order = weightedUniteOrder(m, [...m.order].reverse());
+    const humans = order.filter(p => !p.isBot), bots = order.filter(p => p.isBot);
+    assert.deepEqual(order, [...humans, ...bots]);
+    assert.equal(order.length, m.order.length);
+    assert.equal(new Set(order).size, m.order.length);
+    // An all-human reference reproduces the previous unpartitioned weighted lottery.
+    const reference = weightedUniteOrder(m, m.order.map(p => ({ ...p, isBot: false })));
+    for (const isBot of [false, true]) {
+      const ids = order.filter(p => !!p.isBot === isBot).map(p => p.playerId);
+      const expected = reference.filter(p => !!m.order.find(x => x.playerId === p.playerId).isBot === isBot).map(p => p.playerId);
+      assert.deepEqual(ids, expected, 'partition must not reorder a group or consume more RNG');
+      leaders.get(isBot).add(ids[0]);
+    }
+    assert.deepEqual(m.order, before, 'ordering must not mutate player state');
+  }
+  assert.equal(leaders.get(false).size, 3, 'weights remain probabilistic among humans');
+  assert.equal(leaders.get(true).size, 3, 'weights remain probabilistic among AI');
+});
+
+for (const seats of [4, 8, 20]) for (const clientCombat of [false, true]) {
+  test(seats + ' mixed seats ' + clientCombat + ': human helper precedes AI in actual waves and fairness settlement', t => {
+    const h = makeMatch({ humans: 2, bots: seats - 2, clientCombat, seed: 880, fake: true,
+      script: b => b.kind === 'normal' ? { leaks: { p_0: 3 } } : { survivors: { p_0: 1 } } }).start();
+    t.after(() => h.m.dispose());
+    h.toPrep(1);
+    h.drive(() => h.m.phase === 'UNITE');
+    const first = h.m.unitePlan;
+    const queue = [...first.helpers, ...(first.reserveHelpers || [])];
+    assert.equal(queue[0].playerId, 'p_1');
+    assert.ok(queue.slice(1).every(p => p.isBot));
+    const groups = h.m.poolGroups.length;
+    const limit = seats <= 4 ? 2 : Math.min(10, groups * 2);
+    assert.equal(queue.length, Math.min(seats - 1, limit));
+    assert.equal(first.helpers.length, 2);
+    if (seats > 4) assert.equal(first.roundsMax, Math.min(groups, Math.ceil(queue.length / 2)));
+    h.drive(() => h.m.phase === 'SETTLE');
+    assert.deepEqual([...uniteFairnessRecords(h.m).keys()], queue.map(p => p.playerId));
+    h.invariants();
+  });
+}

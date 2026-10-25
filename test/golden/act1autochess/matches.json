@@ -698,14 +698,14 @@
           "round": 12,
           "ai_0": [1,26,14,0,2,6,8,"14a447f6",60,"deputShip 1/18, indomShip 0/22, kjeragShip 0/8, preciShip 0/8, sargonShip 2/42, visiShip 0/14, yanShip 0/1",46,46,0,119],
           "ai_1": [1,45,12,0,0,6,8,"360e8ff6",93,"deputShip 1/8, indomShip 1/30, kjeragShip 2/53, preciShip 0/14, steadShip 0/3, visiShip 1/2, yanShip 0/1",46,46,0,114],
-          "ai_2": [1,28,12,0,0,6,8,"8785ef3d",112,"deputShip 1/6, indomShip 0/10, kjeragShip 1/8, preciShip 0/13, victoriaShip 2/80, visiShip 1/18",46,46,0,119],
+          "ai_2": [1,28,12,0,0,6,8,"85a1d4cb",112,"deputShip 1/6, indomShip 0/10, kjeragShip 1/8, preciShip 0/13, victoriaShip 2/80, visiShip 1/18",46,46,0,119],
           "ai_3": [1,38,12,0,0,6,8,"edab0490",88,"kjeragShip 0/36, preciShip 1/46, sargonShip 2/36, steadShip 1/6, victoriaShip 0/8, visiShip 0/8",46,46,0,113]
         },
         {
           "round": 13,
           "ai_0": [1,26,14,0,0,6,8,"fe242389",76,"deputShip 2/22, indomShip 0/22, kjeragShip 0/8, preciShip 0/8, sargonShip 1/54, visiShip 0/14, yanShip 0/1",32,32,0,135],
           "ai_1": [1,45,12,0,0,6,8,"cd047d7b",98,"deputShip 1/10, indomShip 0/30, kjeragShip 2/58, preciShip 1/20, steadShip 0/3, swiftShip 1/6, visiShip 1/4, yanShip 0/1",32,32,0,127],
-          "ai_2": [1,28,12,0,2,6,8,"67df4aed",142,"deputShip 1/8, indomShip 0/10, kjeragShip 1/16, preciShip 0/19, victoriaShip 2/98, visiShip 1/20",32,32,0,132],
+          "ai_2": [1,28,12,0,2,6,8,"c9f1987b",142,"deputShip 1/8, indomShip 0/10, kjeragShip 1/16, preciShip 0/19, victoriaShip 2/98, visiShip 1/20",32,32,0,132],
           "ai_3": [1,38,12,0,0,6,8,"8a5d4a50",104,"indomShip 1/0, kjeragShip 0/36, preciShip 1/52, sargonShip 2/46, steadShip 1/6, victoriaShip 0/8, visiShip 0/8",32,32,0,125]
         }
       ],
@@ -749,7 +749,7 @@
           "trophies": 3,
           "reward": 250,
           "stats": {"activatedLayers":164,"bossDamage":457152,"dmgDealt":1605040,"gold":148,"itemsEquipped":23,"kills":319,"leaks":0,"lpLost":0,"merges":6,"perfectRounds":13,"refreshes":29},
-          "lineup": ["3_08_a@11,5[6_09_e_a]","4_03_a@11,6[2_03_e_b+3_04_e_a]","6_11_a@11,7[3_06_e_a+2_09_e_a]","6_08_a@11,8[4_02_e_b+4_06_e_a]","4_07_b@10,7[2_02_e_b+3_02_e_a]","4_17_b@10,8[3_05_e_a+4_02_e_b]","6_07_a@9,8[4_05_e_a+2_06_e_a]","3_14_b@9,9[3_03_e_a+4_08_e_a]"],
+          "lineup": ["3_08_a@11,5[6_09_e_a]","4_03_a@11,6[2_03_e_b+3_04_e_a]","6_11_a@11,7[3_06_e_a+2_09_e_a]","6_08_a@11,8[4_02_e_b+4_05_e_a]","4_07_b@10,7[2_02_e_b+3_02_e_a]","4_17_b@10,8[3_05_e_a+4_02_e_b]","6_07_a@9,8[4_06_e_a+2_06_e_a]","3_14_b@9,9[3_03_e_a+4_08_e_a]"],
           "bonds": ["deputShip 1/10","indomShip 0/10","kjeragShip 1/18","maniShip 1/2","preciShip 0/19","victoriaShip 2/112","visiShip 1/22"]
         },
         "ai_3": {

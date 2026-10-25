@@ -334,6 +334,12 @@ The required avatar / portrait / Front check covers the whole union. `--add-only
 as well as files; only new entries, the content hash and statistics change. This keeps today's presentation stable
 when filling an earlier season's gaps (history §35.109).
 
+Renderer composites follow the same identity rule (§36.3): `ItemView` passes the resolved icon URL to
+`itemTexture`, whose cache also includes image readiness and frame colour. Never use an item chess id for that
+page-lifetime cache: `chess_item_2_07_e_a` names 迅捷作战粮 in 第一期下半 and 见钱眼开玩偶 in 第二期下半.
+Equipped-item pips already use icon URLs; operator/enemy/summon diamonds include their picture URLs. Renderer
+stand-in and DIY record caches validate their source chess/backups objects before reusing a composition.
+
 To fill gaps from an installed official client without downloading art:
 
 ```bash

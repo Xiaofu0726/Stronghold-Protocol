@@ -17,6 +17,7 @@ import { mergeData } from '../../shared/plugins/dataUtils.js';
 import { standInRecord } from '../../shared/standIn.js';
 import { MAX_SEATS } from '../../shared/constants.js';
 import { MAX_OFFER_SLOTS } from './player/common.js';
+import { withFirstPeriodPrepInteractions } from './capacity/prepInteractions.js';
 
 const own = (map, id) => (map && typeof map === 'object' && typeof id === 'string' && Object.hasOwn(map, id) && map[id] && typeof map[id] === 'object' ? map[id] : null);
 const numOr = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -102,6 +103,7 @@ export class GameData {
     // Mode-level globals inherit field by field; the vanilla mode never changes its config object.
     const overrides = Object.fromEntries(Object.keys(this.config).filter(k => k !== 'modes' && Object.hasOwn(this.mode, k)).map(k => [k, this.mode[k]]));
     if (Object.keys(overrides).length) this.config = mergeData(this.config, overrides);
+    this.config = withFirstPeriodPrepInteractions(this.config);
     this.economy = this.config.economy && typeof this.config.economy === 'object' ? this.config.economy : {};
     const chess = this.raw.chess && typeof this.raw.chess === 'object' ? this.raw.chess : {};
     this._chess = chess;

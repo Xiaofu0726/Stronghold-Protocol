@@ -695,6 +695,11 @@ contains each version's base/E2 pictures, skill and strategy icons and models; o
 the same local manifests and package pipeline. Adding earlier-version art preserves existing default-version
 entries. Full illustrations/outfits remain cosmetic-plugin layers for all versions (§35.109, ASSETS.md "Id scope").
 
+Version-dependent caches must follow the active data objects or resolved asset URLs (§36.3). Item plates in the
+preparation area and scouted hands cache by icon URL, image readiness and frame colour, never by reused item id.
+A removed icon returns to its placeholder; obsolete asynchronous loads cannot replace the current icon.
+The renderer's composed stand-in / DIY lookups validate their chess and backups sources on reuse.
+
 The page shows one official version's data at a time (`public/js/versions.js`): in the lobby this browser's choice
 (`sp.pref.lobby.version`, a registry id of `shared/versions.js`) when welcome lists it, else the server's default
 (welcome.versions' `default`), else 第二期下半 (`DEFAULT_VERSION`, a code constant); in a room the room's version
