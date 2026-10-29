@@ -511,7 +511,7 @@ export const C2S = {
   // soloUnlimited: the timed-solo opt-out 「不限时」 (DESIGN §35.23.10). Optional, and only the literal boolean —
   // the server applies `true` solely to a solo room of a version whose solo is timed, and ignores it otherwise, so a
   // default create stays the message it was.
-  'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v), capacity: (v) => ROOM_CAPACITIES.includes(v), test: (v) => v === true, version: isVersionId, soloUnlimited: isBool, $optional: ['capacity', 'test', 'difficulty', 'version', 'soloUnlimited'] },
+  'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v), capacity: (v) => ROOM_CAPACITIES.includes(v), test: (v) => v === true, version: isVersionId, soloUnlimited: isBool, creationKey: (v) => typeof v === 'string' && /^[A-Za-z0-9_-]{12}$/.test(v), $optional: ['capacity', 'test', 'difficulty', 'version', 'soloUnlimited', 'creationKey'] },
   'room.join': { $optional: ['testAck'], testAck: (v) => v === true, code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
   'room.leave': {},
   'room.ready': { ready: isBool },

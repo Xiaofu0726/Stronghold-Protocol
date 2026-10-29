@@ -464,3 +464,7 @@ and clear timers. No shrinking-electorate auto-approval. `aiTakeoverRound` is op
 player rows; local history retains it. [ASSUMED] inherited seat totals do not grant personal awards or aggregates.
 
 The internal welcome preserves the socket’s negotiated delta version and clears its public baseline for a full resync. The inherited seat’s pending pool/delegated rehearsal is cancelled; other seats continue.
+
+### Fork: room creation credentials
+
+The 20-player fork requires a valid `creationKey` on `room.create` for solo and co-op rooms. Existing join/spectate messages are unchanged. A server-only WeakMap associates the room with key ID and remark, never the secret. The local/private `/ops/players` report lists all extant rooms and deduplicated human nicknames, not public player IDs or AI counts. Server commands and browser key caching are specified in [ROOM_KEYS.md](../ROOM_KEYS.md).

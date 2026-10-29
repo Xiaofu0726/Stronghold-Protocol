@@ -230,6 +230,7 @@
 import { aiTakeover, resetAiTakeover, reconcileAiTakeover } from './aiTakeover.js';
 import { randomBytes, randomInt } from 'node:crypto';
 import { setAutoFillAi, fillRoomAi } from './lobbyAutoFill.js';
+import { authorizeRoomCreation, bindRoomAccess } from './access/roomKeys.js';
 import { DIFFICULTIES, ERR, DEFAULT_SEATS, ROOM_CAPACITIES, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor } from '../shared/constants.js';
 import { checkLoadout, checkLoadoutOps, cultivationCharIds, checkNotOwned, checkDiyPicks, charPotentialChanges, checkSkinSelection, operatorCharIds } from '../shared/protocol.js';
 import { encode, isErrCode, sendRaw, sendSession } from './net.js';
@@ -917,7 +918,9 @@ export class Lobby {
   // room.* handlers
   // ---------------------------------------------------------------------------------------------------
 
-  create(session, { mode, difficulty: asked, test, version: askedVersion, soloUnlimited, capacity = DEFAULT_SEATS } = {}) {
+  create(session, { mode, difficulty: asked, test, version: askedVersion, soloUnlimited, capacity = DEFAULT_SEATS, creationKey } = {}) {
+    const creationAccess = authorizeRoomCreation(creationKey);
+    if (!creationAccess) return fail(ERR.BAD_MSG, 'ROOM_CREATION_KEY_REQUIRED');
     if (!ROOM_CAPACITIES.includes(capacity)) return fail(ERR.BAD_MSG, 'invalid capacity');
     // A test room exists only when the process switch allowed it. The check runs before the room is built.
     if (test === true && this.testEnabled !== true) return fail(ERR.TEST_DISABLED);
@@ -975,6 +978,7 @@ export class Lobby {
     }
     if (cur) this.removeMember(cur, session.playerId);
     const room = new Room(code, mode, difficulty, this.now(), capacity, version);
+    bindRoomAccess(room, creationAccess);
     room.test = test === true;
     // 「不限时」 only on a solo room of a version whose solo is timed (header). Anywhere else the key is ignored, so a
     // stray true cannot change a default or co-op create.

@@ -14,7 +14,7 @@
 //     start, WebSocket wire and payload bytes) for a loopback or private-network client only — the maintainer's
 //     decision of 2026-10-12: the figures are the host's, so any other client, also one a tunnel or proxy on this
 //     machine forwards, gets the plain report (net.js clientAddress, honouring TRUST_PROXY like the WebSocket limits);
-//   * GET /ops/players → local/private-client online humans grouped by ongoing match room (onlinePlayers.js);
+//   * GET /ops/players → local/private-client room key metadata and human nicknames (onlinePlayers.js);
 //   * everything else → the static files (static.js).
 // Every response's body bytes count in the traffic counters (traffic.js meter). A route that throws is logged and
 // answers 500.

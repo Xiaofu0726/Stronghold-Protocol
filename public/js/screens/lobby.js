@@ -35,6 +35,7 @@
 // config.json mode texts come localized from data.js.
 
 import { CapacitySelect } from '../ui/capacity/roomCapacity.js';
+import { createWithKey } from '../ui/capacity/creationKey.js';
 import { TestMark } from '../ui/testConsole.js';
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
@@ -717,7 +718,7 @@ export function LobbyScreen() {
   };
   // 独立模拟: at the difficulty picked on 选择模拟协议; 创建同盟: at the remembered one, changed in the room by the host
   // (`version`: the lobby's, only when welcome.versions is present — protocol §4; omitted when the server offers 第二期下半 alone)
-  const create = (mode) => run('create', () => net.request('room.create', {
+  const create = (mode) => run('create', () => createWithKey(net, {
     mode, difficulty: mode === 'solo' ? shownSolo : shownCoop, ...(testMode && asTest ? { test: true } : {}), ...(versions ? { version } : {}),
     ...(mode === 'solo' && soloFree && soloTimed === true ? { soloUnlimited: true } : {}),
     ...(mode === 'coop' ? { capacity } : {}),
