@@ -39,6 +39,8 @@
     "public/js/ui/hud.js",
     "public/js/ui/teamPanel.js",
     "server/lobby.js",
+    "server/http/routes.js",
+    "server/http/onlinePlayers.js",
     "server/lobbyAutoFill.js",
     "server/match/Match.js",
     "server/match/audit.js",

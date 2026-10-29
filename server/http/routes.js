@@ -14,6 +14,7 @@
 //     start, WebSocket wire and payload bytes) for a loopback or private-network client only — the maintainer's
 //     decision of 2026-10-12: the figures are the host's, so any other client, also one a tunnel or proxy on this
 //     machine forwards, gets the plain report (net.js clientAddress, honouring TRUST_PROXY like the WebSocket limits);
+//   * GET /ops/players → local/private-client online humans grouped by ongoing match room (onlinePlayers.js);
 //   * everything else → the static files (static.js).
 // Every response's body bytes count in the traffic counters (traffic.js meter). A route that throws is logged and
 // answers 500.
@@ -22,6 +23,7 @@ import { PROTOCOL_VERSION, APP_VERSION } from '../../shared/constants.js';
 import { buildTag } from './buildTag.js';
 import { setSecurityHeaders, sendError, sendJson, splitUrl } from './common.js';
 import { clientAddress, isLocalIp } from '../net.js';
+import { onlinePlayersReport } from './onlinePlayers.js';
 
 const MAX_URL_LENGTH = 4096;
 
@@ -101,6 +103,14 @@ export function createRequestHandler({ serveStatic, health, log, trustProxy = 'a
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD');
       sendError(req, res, 405, '不支持的请求方法 · Method not allowed');
+      return;
+    }
+    if (parts.rawPath === '/ops/players') {
+      if (!isLocalIp(clientAddress(req, trustProxy).ip)) {
+        sendError(req, res, 403, '仅限本机或内网访问 · Local access only');
+        return;
+      }
+      sendJson(req, res, 200, onlinePlayersReport(health));
       return;
     }
     if (parts.rawPath === '/healthz') {

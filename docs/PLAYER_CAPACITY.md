@@ -136,3 +136,28 @@ node tools/check-four-player-parity.mjs --upstream /path/to/clean-upstream-check
 ### 0.3.3 合并适配
 
 采用上游第一期满整备区互换、商店装备槽布局、跨版本渲染缓存修复。第一期整备区干员装备由独立的 prepInteractions.js 仅覆盖 benchEquip，满区互换完全复用上游。保留真人优先的协防权重队列及原有 20 人扩展。
+
+## 在线名单查询（2026-10-30）
+
+新增只读 `GET /ops/players`，独立实现位于 `server/http/onlinePlayers.js`，HTTP 路由仅负责访问限制和 JSON 响应。
+不发送游戏指令，不修改房间、策略、模拟或玩家状态，不保存查询历史；响应不缓存。
+
+服务器本机速查：
+
+```bash
+curl -fsS http://127.0.0.1:3003/ops/players | python3 -m json.tool
+```
+
+- `onlinePlayers`：已建立身份且 WebSocket 仍打开的在线真人数量，按 `playerId` 去重。
+- `lobbyPlayers`：不在进行中对局里的在线真人数量，包含未进入房间和已进入但尚未开局的人。
+- `waitingRoomPlayers`：上述大厅人数中，已在未开局房间里的人数（含观战者），不是额外增加的人数。
+- `inMatchPlayers`：进行中对局里的在线真人数量，含观战者；与 `lobbyPlayers` 相加等于 `onlinePlayers`。
+- `rooms`：仅列有在线真人的进行中对局，按 `code`（房间号）分组；`players` 中包含 `playerId`、`name` 和
+  `role`（`player` 或 `spectator`）。AI 不进入昵称列表，仅通过 `bots` 列出该房间 AI 席位数量。
+
+离线占位和仍在重连保留期内的离线身份不计入在线名单。去重基于玩家 ID，同名的不同身份不会合并；
+同一个自然人使用不同身份连接，仍会算作多名玩家。没有在线真人的对局不出现在 `rooms` 中。
+
+访问限制复用 `/healthz?traffic=1` 的客户端地址识别：仅本机或内网客户端可访问，公网客户端返回 403。
+反向代理应正确设置并覆盖客户端地址转发头；如果代理不传真实地址，后端无法区分本机代理与本机调用，
+应在代理层禁止公网访问 `/ops/players`。接口不返回 IP、重连令牌或玩家私有对局数据。
